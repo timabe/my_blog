@@ -1,0 +1,73 @@
+## Basic Configuration
+
+baseurl = "https://shenoybr.github.io/hugo-goa-demo/" 
+builddrafts = false
+canonifyurls = false
+languageCode = "en-US"
+enableEmoji = true
+
+
+
+contentdir = "content"
+layoutdir = "layouts"
+publishdir = "public"
+
+author = "tim abraham"
+title = "tim abraham"
+
+theme = "hugo-goa"
+
+[permalinks]
+    post = "/:year/:month/:day/:slug/"
+
+## Hugo Built-in Features
+disqusShortname = "https-shenoybr-github-io-hugo-goa-demo" # Comment out to disable Disqus.
+googleAnalytics = "XYZ"
+enableRobotsTXT = true
+
+## Site Settings
+[params]
+author = "tim abraham"
+authorimage = "dot.png"
+dateformat = "Jan 2, 2006"
+
+## Site Meta Settings
+[params.meta]
+description = "Simple minimalist theme"
+keywords = "minimalist,blog,goa,hugo,developer"
+
+## Social Accounts
+[params.social]
+github = "timabe"
+linkedin = "timabraham"
+twitter = "timabe"
+email = "timmy4@gmail.com"
+
+## Extras
+[params.extra]
+copyright = "© 2018. Tim Abraham. [Some Rights Reserved](http://creativecommons.org/licenses/by/3.0/)." 
+poweredby = false
+highlightjs = true
+
+## Main Menu
+[[menu.main]]
+    name = "about"
+    identifier = "about"
+    weight = 100
+    url = "/about/"
+[[menu.main]]
+    name = "blog"
+    weight = 200
+    identifier = "blog"
+    url = "/blog/"
+[[menu.main]]
+    name = "books"
+    identifier = "books"
+    weight = 300
+    url = "/books/"
+[[menu.main]]
+    name = "recipes"
+    identifier = "recipes"
+    weight = 400
+    url = "/recipes/"
+    
