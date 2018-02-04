@@ -1,6 +1,6 @@
 ## Basic Configuration
 
-baseurl = "https://shenoybr.github.io/hugo-goa-demo/" 
+baseurl = "https://timabe.me/" 
 builddrafts = false
 canonifyurls = false
 languageCode = "en-US"
@@ -21,8 +21,8 @@ theme = "hugo-goa"
     post = "/:year/:month/:day/:slug/"
 
 ## Hugo Built-in Features
-disqusShortname = "https-shenoybr-github-io-hugo-goa-demo" # Comment out to disable Disqus.
-googleAnalytics = "XYZ"
+# disqusShortname = "https-shenoybr-github-io-hugo-goa-demo" # Comment out to disable Disqus.
+# googleAnalytics = "XYZ"
 enableRobotsTXT = true
 
 ## Site Settings
