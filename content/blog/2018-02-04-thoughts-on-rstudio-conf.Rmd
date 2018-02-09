@@ -1,0 +1,46 @@
+---
+title: 'thoughts on rstudio::conf '
+author: Tim Abraham
+date: '2018-02-04'
+slug: thoughts-on-rstudio-conf
+categories: []
+tags:
+  - R
+---
+
+Thoughts on my experience at rstudio::conf from 10,000 feet up in the air.
+
+Overall this is a terrific conference! I don't have a lot of conferences under my belt to compare this to, pretty much only Strata which is more focused on big data and very sponsor heavy. I was expecting rstudio::conf to be very different, in a good way, and my expectations were met. There was more of a community vibe, the few sponsors there were not in your face at all, and while I didn't get nearly as many t-shirts with terrible data puns like I would at Strata, that's okay. I used to be really excited about data t-shirts, but now they're all at Goodwill.
+
+Here are some of the themes and takeaways from the conference.
+
+## Tidyverse Love Fest
+
+Everyone loves the Tidyverse and the enthusiasm is contagious. I don't think I appreciated how profound the idea of tidy data is. Tidy data is way of organizing a data set, such that each column is a variable, each row is an observation, and each cell is a value. It's simple and subtle, but also extremely powerful. It's one of those concepts, like evolution, that seem simple and obvious once you are taught it but whose conception required a lot of deep thinking by a person uniquely suited for the task. Our Darwin is Hadley Wickham, who has done so much to make R a true joy to use.
+
+Data is messy, so writing functions to run computations on data is challenging. Functions like to know what they're receiving. With tidy data, developers can design functions and have a high degree of confidence that the data pouring into those functions will look a certain way. This makes people more likely to want to contribute their functions to the package eco-system, which strengthens the community. Also, as I mentioned, the vibe around R and the tidyverse is so fun, inclusive, and positive that people are motivated to develop for it regardless of it's beautiful philosophical underpinnings.
+
+## Open Source: The Cathedral and the Bazaar 
+
+Chatting with other conference attendees, I was surprised to learn how many industries still use SAS instead of R (and Windows over Linux to a lesser extent). Coming from the tech industry, I figured open source was universally adopted, but that's not at all the case.
+
+## RStudio: Building software to communicate
+
+A theme of the talks I went to was communicating and disseminating our work. In the past, communicating results in R meant making pretty charts and pasting them into documents and slide decks. Fortunately that's no longer the case. Thanks to work mostly done by the RStudio team, the ecosystem for showing off the power of R throughout your organization has gained huge ground. Rmarkdown has gotten better and better, with the ability to run parameterized reports, embed shiny in your documents, and schedule your reports ala crontab using RStudio Connect (which I'm a happy customer of). Shiny is getting better, too. And now there's [plumber](https://www.rplumber.io/), which extends R's sphere of influence into the production tech stack. It's still TBD whether I'll be able to convince one of the startups I work with to use a plumber API in production, but that's at least a good challenge to give myself this year.
+
+
+## R as an interface for $x$.
+If you want to write Python in Rmarkdown, you can. If you want to use R to produce a d3.js chart, you can. You can construct DAGs for deep learning in R and run it using TensorFlow. And if you don't want to learn SQL (although you should), you can use dplyr instead.
+
+Everything is becoming more connected. One language doesn't constrain what you can accomplish. This is especially nice for R users, who often come from a stats background rather than computer science. The presentation on TensorFlow really drove this point home to me. Over the summer I took the [Udacity Deep Learning course](https://www.udacity.com/course/deep-learning--ud730), which used python in Jupyter notebooks for all homework assignments. I enjoyed it, but found the workflow a little clunky. After watching JJ's presentation on TensorFlow in RStudio, I was amazed at how much simpler the workflow appeared. You can tell RStudio is putting a lot of resources into making their interfaces easy to use, intuitive, and well designed. I can't wait to try it out sometime, although I have very few use cases for deep learning. Which brings me to my final point:
+
+## Data Science outside the Silicon Valley tech bubble
+
+rstudio::conf is a multi disciplinary conference. Although I'm sure they were around, I didn't meet anyone else from a Bay Area tech company. Although I love working in consumer technology, it was nice to get away for a few days and hear what the rest of the world is talking about, and not talking about. Some topics I noticed a refreshing lack of buzz about were:
+
+* AI: Although there was a lot of talk about machine learning, the term "AI" didn't grace my ears. All us data people can probably agree that AI is over hyped and hijacked as a marketing term. Also, there are two types of data scientists: ones that like to explain **why** and find causal relationships, and ones that mainly care about prediction accuracy. R users tend to be more in the former camp.
+
+* Cryptocurrencies: I got all the way to the final talk of the final day until I heard anything about bitcoin. Although I find bitcoin fascinating and believe in its future, it was nice to not think and talk about it *every second of every minute of the day.* This is literally what it's like in Silicon Valley right now.
+
+* La Croix: Didn't see any!
+It was nice to step outside the bubble, if only for a few days, and see what others in the data science world are thinking about. 

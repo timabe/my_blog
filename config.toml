@@ -21,8 +21,8 @@ theme = "hugo-goa"
     post = "/:year/:month/:day/:slug/"
 
 ## Hugo Built-in Features
-# disqusShortname = "https-shenoybr-github-io-hugo-goa-demo" # Comment out to disable Disqus.
-# googleAnalytics = "XYZ"
+disqusShortname = "timabe-me" 
+googleAnalytics = "UA-73240359-1"
 enableRobotsTXT = true
 
 ## Site Settings

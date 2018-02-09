@@ -3,3 +3,5 @@
 .Rhistory
 .Rproj*
 public/
+.Rproj.user
+.html
