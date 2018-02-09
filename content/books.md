@@ -5,6 +5,7 @@ draft = false
 slug = ""
 tags = ["books"]
 title = "Reading List"
+showcomments = false
 
 showpagemeta = false
 +++

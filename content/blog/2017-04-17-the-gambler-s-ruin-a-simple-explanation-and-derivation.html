@@ -124,7 +124,7 @@ data_frame(b_wealth, p = a_out_b_wealth) %&gt;%
   ggplot(aes(b_wealth, p)) + geom_line(color = &#39;darkred&#39;) + 
   labs(y = &#39;Probability of Ruin for Player A&#39;, x = &#39;Wealth of Player B&#39;, title = &#39;Player A starts with $50&#39;) + 
   theme_tech(&#39;blog&#39;) </code></pre>
-<p><img src="/hugo-goa-demo/blog/2017-04-17-the-gambler-s-ruin-a-simple-explanation-and-derivation_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p><img src="/blog/2017-04-17-the-gambler-s-ruin-a-simple-explanation-and-derivation_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
 <p>And that’s when the odds are almost even! Let’s now keep Player A and Player B’s wealth both at $50, but let’s change p, the probability Player A has of winning a game.</p>
 <pre class="r"><code>library(ggtech)
 prob_p &lt;- seq(.1, .49, by = 0.01)
@@ -133,7 +133,7 @@ data_frame(prob_p, prob_ruins) %&gt;%
   ggplot(aes(prob_p, prob_ruins)) + geom_line(color = &#39;darkred&#39;) +
   labs(y = &#39;Probability of Ruin for Player A&#39;, x = &#39;Probability of Player A winning a game (p)&#39;, title = &#39;Both Players start with $50&#39;) +
   theme_tech(&#39;blog&#39;) # this is a ggplot theme I use specifically for this blog. get it at github.com/timabe/ggtech</code></pre>
-<p><img src="/hugo-goa-demo/blog/2017-04-17-the-gambler-s-ruin-a-simple-explanation-and-derivation_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p><img src="/blog/2017-04-17-the-gambler-s-ruin-a-simple-explanation-and-derivation_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
 <p>Yikes! Even if they have the same amount to begin with, even a slight unbalance in <span class="math inline">\(p/q\)</span> spells disaster for Player A. A 48% chance of winning a game leads to a 98% chance of ruin!</p>
 </div>
 <div id="conclusion" class="section level2">
