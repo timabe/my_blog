@@ -89,6 +89,12 @@ div.content
 
     color: #777;
 }
+.caption
+{
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 12px;
+    font-weight: 200;
+}
 .copyright
 {
     font-family: 'Helvetica Neue', sans-serif;

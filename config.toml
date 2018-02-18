@@ -5,7 +5,7 @@ builddrafts = false
 canonifyurls = false
 languageCode = "en-US"
 enableEmoji = true
-
+ignoreFiles = ["\\.Rmd$", "\\.Rmarkdown$", "_files$", "_cache$"]
 
 
 contentdir = "content"

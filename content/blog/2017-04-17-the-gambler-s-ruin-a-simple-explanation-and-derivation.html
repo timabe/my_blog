@@ -111,6 +111,15 @@ description: A full walk through of a tricky but fun math problem
   return(num / den)
 }</code></pre>
 <p>Let’s try a few values. First let’s make the game only slightly in favor of player B but give him more and more wealth.</p>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>## ── Attaching packages ──────────────────────────────────────────────────────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
+<pre><code>## ✔ ggplot2 2.2.1     ✔ purrr   0.2.4
+## ✔ tibble  1.4.2     ✔ dplyr   0.7.4
+## ✔ tidyr   0.8.0     ✔ stringr 1.2.0
+## ✔ readr   1.1.1     ✔ forcats 0.2.0</code></pre>
+<pre><code>## ── Conflicts ─────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()</code></pre>
 <pre class="r"><code>b_wealth &lt;- c(50, 60, 100, 200, 500, 1000)
 b_wealth %&gt;% map_dbl(prob_ruin_a, a = 50, p = 0.499)</code></pre>
 <pre><code>## [1] 0.5498341 0.5994213 0.7306926 0.8711488 0.9724110 0.9966294</code></pre>
@@ -126,8 +135,7 @@ data_frame(b_wealth, p = a_out_b_wealth) %&gt;%
   theme_tech(&#39;blog&#39;) </code></pre>
 <p><img src="/blog/2017-04-17-the-gambler-s-ruin-a-simple-explanation-and-derivation_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
 <p>And that’s when the odds are almost even! Let’s now keep Player A and Player B’s wealth both at $50, but let’s change p, the probability Player A has of winning a game.</p>
-<pre class="r"><code>library(ggtech)
-prob_p &lt;- seq(.1, .49, by = 0.01)
+<pre class="r"><code>prob_p &lt;- seq(.1, .49, by = 0.01)
 prob_ruins &lt;- prob_p %&gt;% map_dbl(prob_ruin_a, a = 50, b = 50)
 data_frame(prob_p, prob_ruins) %&gt;%
   ggplot(aes(prob_p, prob_ruins)) + geom_line(color = &#39;darkred&#39;) +

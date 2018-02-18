@@ -144,6 +144,7 @@ prob_ruin_a <- function(a, b, p) {
 Let's try a few values. First let's make the game only slightly in favor of player B but give him more and more wealth.
 
 ```{r}
+library(tidyverse)
 b_wealth <- c(50, 60, 100, 200, 500, 1000)
 b_wealth %>% map_dbl(prob_ruin_a, a = 50, p = 0.499)
 ```
@@ -153,7 +154,7 @@ We're giving almost equal odds. Player A will win the game 49.9% of the time. Wh
 
 Using a bunch of values for Player B's wealth from $50 to $1000, we can see the probability of ruin for Player A increases exponentially.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(ggtech)
 b_wealth <- seq(50, 1000, by = 10)
 a_out_b_wealth <- b_wealth %>% map_dbl(prob_ruin_a, a = 50, p = 0.499)
@@ -168,7 +169,6 @@ data_frame(b_wealth, p = a_out_b_wealth) %>%
 And that's when the odds are almost even! Let's now keep Player A and Player B's wealth both at $50, but let's change p, the probability Player A has of winning a game.
 
 ```{r}
-library(ggtech)
 prob_p <- seq(.1, .49, by = 0.01)
 prob_ruins <- prob_p %>% map_dbl(prob_ruin_a, a = 50, b = 50)
 data_frame(prob_p, prob_ruins) %>%
