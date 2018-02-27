@@ -1,0 +1,84 @@
+---
+title: Securing RStudio Connect with HTTPS
+author: Tim Abraham
+date: '2018-02-26'
+slug: securing-rstudio-connect-with-https
+categories: []
+tags:
+  - R
+  - engineering
+---
+
+
+
+<p>I’ve been (very happily) using <a href="https://www.rstudio.com/products/connect/">RStudio Connect</a> for about a year.</p>
+<p>Like many data scientists who don’t come from a computer science background, I’m just capable enough at engineering and dev ops to be dangerous. Over the years I’ve picked up a bunch of random knowledge about Linux, web development, and networking such that I am now pretty self sufficient, although I usually have to do way more trial and error than my more legit engineering peers to get something working.</p>
+<p>In the case of RStudio Connect, which is software that you install on your own server, the process was pretty straightforward. I created a medium sized EC2 instance on AWS, ran the commands in the installation guide to get the necessary software dependencies installed, changed the port number to 80, and created a <code>CNAME</code> record in AWS <a href="https://aws.amazon.com/route53">Route 53</a> to point my domain name to the EC2 instance. No hiccups. My inner devOps swelled with pride, but I should have known it’s never that easy.</p>
+<p>Later, a guy who does security work for our company told me that my service was sending passwords in plaintext. Yikes. I had made a note to secure the server with HTTPS, but had let it slip. My past experiences with HTTPS had always been confusing enough, it’s just a rabbit hole I don’t like going down.</p>
+<p>For those unfamiliar with HTTPS, there are two main ideas behind it. One is encryption. With regular HTTP traffic, your requests are sent across the internet in plaintext. This can be really bad. If you’re working at a cafe with public wifi, a hacker on the wifi network could pretty easily record all your web activity. Sending traffic through HTTPS solves that, using public key cryptography (a favorite topic of mine, but I won’t get into the details here). The second idea packaged into HTTPS are security certificates. If you’re on Google Chrome, you’ll notice my site (as well as most sites you visit these days) has this little green padlock next to the URL.</p>
+<div class="figure">
+<img src="img/secure.png" alt="I’m secure in myself" />
+<p class="caption">I’m secure in myself</p>
+</div>
+<p>That lock is there to tell you that some third party has verified that I am who I say I am, and that when you connect to my site, you’re actually sending data to me and no one else. This prevents something called a <a href="https://en.wikipedia.org/wiki/Man-in-the-middle_attack">man in the middle attack</a>. Rather that go deep into this complex topic, I’ll just post some links at the bottom for curious readers who want to know more about HTTPS.</p>
+<div id="securing-rstudio-connect-with-https-using-lets-encrypt" class="section level2">
+<h2>Securing RStudio Connect with HTTPS using Let’s Encrypt</h2>
+<p>Here, I will walk you through the steps you need to take to secure your RStudio Connect server. We’ll be using a service called Let’s Encrypt. Let’s Encrypt is a free, automated, and open certificate authority brought to you by the non-profit Internet Security Research Group (ISRG).</p>
+<div id="download-certbot" class="section level3">
+<h3>1. Download <strong>certbot</strong></h3>
+<p><code>certbot</code> is the official command line client for Let’s Encrypt. It’s developed by the <a href="https://www.eff.org/">Electronic Frontier Foundation</a>, a very cool and legit foundation.</p>
+<p>SSH into your server first, and then as any user, run this to download the <code>certbot</code> client.</p>
+<pre class="bash"><code>wget https://dl.eff.org/certbot-auto
+chmod a+x certbot-auto</code></pre>
+</div>
+<div id="stop-your-connect-server" class="section level3">
+<h3>2. Stop your Connect Server</h3>
+<p>Run this to temporarily stop your RStudio Connect server</p>
+<pre class="bash"><code>sudo systemctl stop rstudio-connect</code></pre>
+</div>
+<div id="open-traffic-to-port-443" class="section level3">
+<h3>3. Open traffic to port 443</h3>
+<p>HTTPS traffic is sent through port 443, unlike HTTP which is sent through port 80. If you are running RStudio Connect on an EC2 instance, you’ll want to edit the security group for that instance and open up port 443 for HTTPS traffic.</p>
+</div>
+<div id="run-certbot-to-generate-a-certificate" class="section level3">
+<h3>4. Run certbot to generate a certificate</h3>
+<p>From the same directory you were in when you downloaded <code>certbot</code> in step 1, run:</p>
+<pre class="bash"><code>./certbot-auto certonly --standalone -d mydomain.com</code></pre>
+<p>Replacing mydomain.com with your RStudio Connect’s domain. It will ask you a few questions before it begins generating the certificates. At the end of the process, it will display the paths to the certificate file and the key file. Both should look something like this:</p>
+<pre class="bash"><code># Certificate File
+/etc/letsencrypt/live/mydomain.com/fullchain.pem
+
+# Key File
+/etc/letsencrypt/live/mydomain.com/privkey.pem</code></pre>
+</div>
+<div id="edit-your-rstudio-connect-config-file" class="section level3">
+<h3>5. Edit your RStudio Connect config file</h3>
+<p>We now have our certificates and just need to tell RStudio Connect where they are and to start using HTTPS instead of HTTP. You (probably) need to use sudo to edit the config file, and unless you installed emacs or vim, you’ll probably just want to go with nano.</p>
+<pre class="bash"><code>sudo nano /etc/rstudio-connect/rstudio-connect.gcfg</code></pre>
+<p>Here’s what I edited mine to look like. I commented out everything HTTP related, uncommented the HTTPS section and added my key and certificate paths. Then I added an <code>HttpRedirect</code> so that HTTP traffic through port 80 would be redirected to 443.</p>
+<pre><code>;[Http]
+; RStudio Connect will listen on this network address for HTTP connections.
+;Listen = :80
+
+[Https]
+; Rstudio Connect will listen on this network address for HTTPS connections
+Listen = :443
+Certificate = /etc/letsencrypt/live/&lt;mydomain.com&gt;/fullchain.pem
+Key = /etc/letsencrypt/live/&lt;mydomain.com&gt;/privkey.pem
+
+[HttpRedirect]
+Listen = :80</code></pre>
+</div>
+<div id="restart-rstudio-connect" class="section level3">
+<h3>6. Restart RStudio Connect</h3>
+<pre class="bash"><code>sudo systemctl restart rstudio-connect</code></pre>
+<p>You should now be able to navigate in a browser to <code>https://&lt;mydomain.com&gt;</code> and see the green lock, indicating your site is now coming through on HTTPS and your server is authenticated by Let’s Encrypt.</p>
+</div>
+</div>
+<div id="additional-resources" class="section level2">
+<h2>Additional Resources</h2>
+<ul>
+<li>[Using the Let’s Encrypt Certbot to get HTTPS on your Amazon EC2 NGINX box] (<a href="https://medium.freecodecamp.org/going-https-on-amazon-ec2-ubuntu-14-04-with-lets-encrypt-certbot-on-nginx-696770649e76" class="uri">https://medium.freecodecamp.org/going-https-on-amazon-ec2-ubuntu-14-04-with-lets-encrypt-certbot-on-nginx-696770649e76</a>): A post by Karan Thakkar I heavily borrow from. Fun fact: when I found his medium post the number of claps was exactly at 443, which I had to assume was intentional and a great example of internet nerd humor. Since then someone spoiled the party.</li>
+<li><a href="https://support.google.com/webmasters/answer/6073543?hl=en">Secure your site with HTTPS</a>: Gives a little more color on HTTPS</li>
+</ul>
+</div>

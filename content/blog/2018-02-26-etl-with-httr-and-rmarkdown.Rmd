@@ -1,0 +1,175 @@
+---
+title: ETL with httr and rmarkdown
+author: Tim Abraham
+date: '2018-02-26'
+slug: etl-with-httr-and-rmarkdown
+categories:
+  - R
+tags:
+  - data engineering
+  - R
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, eval = FALSE)
+```
+
+
+One of the cool features about RStudio Connect is the ability run rmarkdown jobs on a scheduler. If you're familiar with `crontab`, it's just like that except GUI based and thus a little easier. The most obvious use case for this is to schedule daily or hourly reports, but recently I've found another great use for it: ETL.
+
+ETL of course stands for **E**xtract-**T**ransform-**L**oad, and is a common practice in any organization that warehouses data. Essentially, it's the practice of extracting some data source that is unsuited for the data tasks you want to carry out, transforming it into a more friendly format, and finally loading it into your data warehouse. If you're like me, you learn best from examples, so let's move into the meat of this blog post and walk through the construction of an ETL job.
+
+## Our Task: Fetch Leads from Unbounce.com
+
+[Unbounce](www.unbounce.com) is an amazing service I only recently learned about. It allows marketers to easily and quickly design different landing pages, run AB tests on them, and find out which one converts best. Building this in house takes a lot of resources and know-how, and is pretty much in-feasible for a start-up, so having Unbounce do all this is a godsend. 
+
+When a user enters their information on an Unbounce form, Unbounce will record them as a "lead". You can log onto Unbounce and download a CSV of your leads. They also have an API.
+
+I was recently working with a team that was using Unbounce to collect leads. We needed to have the actual leads data, both for reporting and to compare with our internal data to properly measure conversion. Obviously, pulling the leads manually each day was out of the question - that's not a process any data scientist could ever embrace. Using the API was a more attractive option. However, running the same script against the API each day wasn't much better than downloading the CSV each day. Both required a human to touch a few buttons each day. This is exactly where you'd want ETL. 
+
+So let's begin our ETL, using rmarkdown. By the time we're finished, we'll have something that
+* Runs each night at exactly midnight
+* Downloads all our leads from Unbounce
+* Processes the leads from unstructured JSON to tidy rectangular data
+* Loads the tidy data into a database for safe keeping
+
+### The `config` package: Great for storing secrets
+
+We'll be using our API key to send requests to Unbounce, and database credentials to write data to our DB. We don't want anyone to have access to these credentials. Exposing them in our rmarkdown document is a big no-no. So is keeping them in version control. 
+
+It's far safer to store them in environment variables, and there's an R package by the RStudio team called [config](https://github.com/rstudio/config) that makes working with environment variables really pleasant.
+
+When you call `library(config)`, rmarkdown knows to look for a file called `config.yml` to get the values for your environment variables.
+
+The `config.yml` must follow the standard YML format. For this project, I wanted to store my API key and DB credentials, so mine looked something like this:
+
+```
+default:
+  ub_api_key: "<API KEY>"
+  host: "mydb-host.rds.amazonaws.com"
+  dbname: "mydb"
+  user: "tim"
+  password: "<mypassword>"
+```
+
+In my R code, if I want the value of my API key, I simply call `config::get('ub_api_key')`. This keeps my secrets out of the document, out of version control, and makes me feel like a legit security expert. 
+
+### Extract and Transform
+
+Let's set up our code to access the Unbounce API. According to their [documentation](https://developer.unbounce.com/api_reference/#id_pages__page_id__leads) you need to add your page ID to the URL that you send your `GET` request to. In my case, I have several page IDs. My team may create new ones in the future as well, so rather than list them out I want some programmatic way of querying them. It turns out there's [another API endpoint that will return your page IDs](https://developer.unbounce.com/api_reference/#id_domains__domain_id__pages), so let's start with that. 
+
+Of course, we could use the `curl` command for this. Rmarkdown allows us to write code chunks in bash. If we were do that, it would look something like this:
+
+```{bash, eval=FALSE}
+curl -u API_KEY: -H "Accept: application/vnd.unbounce.api.v0.4+json" -X GET https://api.unbounce.com/pages/
+```
+
+There's 3 disadvantages of going this route. One is that the output goes to `stout`. You could avoid that and put it in a file by passing something like `-o /tmp/pages.json` but then you'd have to read it back into R, which isn't ideal and the second disadvantage. Third is that the `config` package doesn't set bash environment variables. That means we can't call `echo $ub_api_key` on the command line to see our API key. To get that to work we'd have to do a hacky workaround and put `Sys.setenv(API_KEY = config::get('ub_api_key'))`. This is a lot of extra work, and anyway it's more fun to do it all in R, so we'll turn to the [httr](https://github.com/r-lib/httr) package.
+
+```{r}
+library(httr)
+library(jsonlite)
+# You can use HTTP Basic Auth to interact with our API via API keys. Use your Unbounce API Key as the username and nothing as the password.
+r <- GET("https://api.unbounce.com/pages/", authenticate(user = config::get("ub_api_key"), password = ""), add_headers(Accept = "application/vnd.unbounce.api.v0.4+json")) 
+
+page_df <- r %>% 
+  content("text") %>% 
+  fromJSON(flatten = T)
+
+page_df <- page_df[["pages"]] %>% 
+   select(id, url, state, metadata.related.leads)
+```
+
+In the above code, we stored the request from our URL in a variable called `r`. Then we extracted the content from that request in "text" format, which returns it as a bunch of JSON. Finally, we used `fromJSON` from the `jsonlite` package to flatten the content into a named list of two data frames. The list named `"pages"` turned out to have the page IDs, and so we stored that in a data frame along with a few other fields. 
+
+#### Leads as List Columns
+
+Now we have a data frame with all our page IDs. It turned out that this other field we got, `metadata.related.leads` has the page ID already formatted properly the way the lead API endpoint wants it. How convenient!
+
+We know from the above example that hitting this API returns semi-structured data. That tends to be the case with APIs. They are of great use to web developers but not so fun for us tidy data scientists to use. No matter - we now have a great data type in R to work with for these exact situations: list columns. List columns give you all the semi-structured advantages of lists, but adjoined to your data frame.
+
+One of my favorite workflows nowadays is to use `mutate` and `map` together to produce a list column for each observation in a data frame. Let me show you how. First we want to write a function that takes a URL as an argument, hits the lead API endpoint, returns the content, and tidies it up a bit.
+
+```{r}
+get_leads <- function(lead_url = metadata.related.fields, limit = 1000) {
+  # strip out the 'secure=true' from metadata.related.fields
+  lead_url_no_params = str_replace(lead_url, 'secure=true', replacement = '')
+  
+  # add limit params. Unbounce defaults to 50 and tops out at 1000
+  lead_url_w_limit <- paste0(lead_url_no_params, 'limit=', limit, sep = '')
+  
+  # hit the unbounce api
+  leads_list <- GET(lead_url_w_limit, authenticate(user = config::get("ub_api_key"), password = ""), 
+                    add_headers(Accept = "application/vnd.unbounce.api.v0.4+json")) %>% 
+    content("text") %>% 
+    fromJSON(flatten = T)
+  
+  # return only the fields we want
+  leads_df <- leads_list[['leads']] %>% 
+    select(id, submitter_ip, created_at, form_data.email)
+}
+```
+
+This function is very similar to the one we had above. Given one of the URLs in `page_df`, it will return the lead object from the API. Rather than write a for-loop and break our data frame workflow, we can achieve the same thing with `mutate` and `map` staying in the tidyverse.
+
+```{r}
+leads_df <- page_df %>% 
+  mutate(leads = map(.x = metadata.related.leads, .f = get_leads))
+```
+
+We now have a data frame that looks like `page_df` except there's an additional list-column called `leads` containing tidy results from the API request. Lastly, we can just unpack that list column using the `unnest` function.
+
+```{r}
+leads_final <- leads_df %>% 
+  unnest(leads)
+```
+
+We now have a data frame with our lead email addresses, the unbounce pages we got those leads from, a timestamp, and the IP address (useful for detecting fakes). We combined the extract stage, where we sent requests to the Unbounce API and got semi-structured data returned, with the transform stage in which we took that semi-structured data and tidied it up in a format that will be useful for later analysis.
+
+### Load (this part is easy)
+
+Now that we've got our data, let's put it somewhere safe and accessible to others. `save.image()` isn't appropriate here, since that will only save it locally on my computer for now.
+
+I created a PostgreSQL analytics database for this project a few weeks back, mainly for warehousing [segment](segment.com) events. That seems like a perfect place to store this data as well. By storing it there, anyone with database credentials can see the data and use it in applications or reports. And people without the credentials can't, which is also great since we're storing email addresses of potential leads.
+
+`dplyr` makes it very simple to write to a database. Here's how. First you define your connection, using your environment variables from `config.yml` to keep your secrets safe.
+
+```{r}
+# connect to your database.
+# Here we're using RPostgreSQL::PostgreSQL() as a driver. 
+my_db <-  DBI::dbConnect(drv = RPostgreSQL::PostgreSQL(),
+  dbname = config::get("dbname"),
+  user = config::get("user"),
+  port = 5432, # this is the default port for postgres
+  host = config::get("host"),
+  password = config::get("password")
+)
+```
+
+Now we can use the `copy_to` function in dplyr to write our leads to a table called `unbounce_leads` in our PostgreSQL database.
+
+```{r}
+copy_to(
+  dest = my_db, 
+  df = leads_final, 
+  name = "unbounce_leads", 
+  temporary = FALSE, 
+  overwrite = TRUE
+  )
+```
+
+That's pretty powerful! As much as I love SQL (and I really do), creating tables was always a pain to me. I would always forget the syntax, and it seemed too cumbersome to call out each data type specifically. Data scientists work fast so we don't have time to for tightly typed things. And the `COPY` function in Postgres, don't get me started . . . 
+
+At this point we're done with our ETL. We can click "Knit" in RStudio and it should just run. Note that my choice to use rmarkdown is totally arbitrary at this point. We could have done all this in a single R script, but the rmarkdown choice will become clear in the next section.
+
+### Going from singular to plural
+
+We just wrote ETL to extract data from a couple API endpoints, transform it into tidy format, and load it into a PostgreSQL database. That's awesome. But remember in the very beginning of this post I said that data scientists hate manual processes? I'm not going to be the one to wake up at 6 am and run this script each day to update my table with new leads. Even if it means just executing one command, that's one command too many.
+
+This is where RStudio Connect's scheduler comes in handy. If you deploy a rmarkdown document via Connect, you have an easy option to schedule it. I like to run mine at midnight each night.
+
+![RStudio Connect's Scheduler](img/cron.png)
+
+If you don't have RStudio Connect, you could still schedule it using crontab, but you'd need to have it on some machine that is always running. That's pretty easy to do - if you run into trouble just say so in the comments and I'll pitch in.
+
+Every since I discovered this way of using rmarkdown along with RStudio Connect as an ETL tool, I've kind of gone crazy with it. So many marketing tools have APIs, and warehousing the data can really add value to any data science functions you plan to carry out. I've been warehousing a bunch of mailchimp and Facebook data this way, too. 

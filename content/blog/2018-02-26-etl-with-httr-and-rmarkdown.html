@@ -1,0 +1,73 @@
+---
+title: ETL with httr and rmarkdown
+author: Tim Abraham
+date: '2018-02-26'
+slug: etl-with-httr-and-rmarkdown
+categories:
+  - R
+tags:
+  - data engineering
+  - R
+---
+
+
+
+<p>One of the cool features about RStudio Connect is the ability run rmarkdown jobs on a scheduler. If you’re familiar with <code>crontab</code>, it’s just like that except GUI based and thus a little easier. The most obvious use case for this is to schedule daily or hourly reports, but recently I’ve found another great use for it: ETL.</p>
+<p>ETL of course stands for <strong>E</strong>xtract-<strong>T</strong>ransform-<strong>L</strong>oad, and is a common practice in any organization that warehouses data. Essentially, it’s the practice of extracting some data source that is unsuited for the data tasks you want to carry out, transforming it into a more friendly format, and finally loading it into your data warehouse. If you’re like me, you learn best from examples, so let’s move into the meat of this blog post and walk through the construction of an ETL job.</p>
+<div id="our-task-fetch-leads-from-unbounce.com" class="section level2">
+<h2>Our Task: Fetch Leads from Unbounce.com</h2>
+<p><a href="www.unbounce.com">Unbounce</a> is an amazing service I only recently learned about. It allows marketers to easily and quickly design different landing pages, run AB tests on them, and find out which one converts best. Building this in house takes a lot of resources and know-how, and is pretty much in-feasible for a start-up, so having Unbounce do all this is a godsend.</p>
+<p>When a user enters their information on an Unbounce form, Unbounce will record them as a “lead”. You can log onto Unbounce and download a CSV of your leads. They also have an API.</p>
+<p>I was recently working with a team that was using Unbounce to collect leads. We needed to have the actual leads data, both for reporting and to compare with our internal data to properly measure conversion. Obviously, pulling the leads manually each day was out of the question - that’s not a process any data scientist could ever embrace. Using the API was a more attractive option. However, running the same script against the API each day wasn’t much better than downloading the CSV each day. Both required a human to touch a few buttons each day. This is exactly where you’d want ETL.</p>
+<p>So let’s begin our ETL, using rmarkdown. By the time we’re finished, we’ll have something that * Runs each night at exactly midnight * Downloads all our leads from Unbounce * Processes the leads from unstructured JSON to tidy rectangular data * Loads the tidy data into a database for safe keeping</p>
+<div id="the-config-package-great-for-storing-secrets" class="section level3">
+<h3>The <code>config</code> package: Great for storing secrets</h3>
+<p>We’ll be using our API key to send requests to Unbounce, and database credentials to write data to our DB. We don’t want anyone to have access to these credentials. Exposing them in our rmarkdown document is a big no-no. So is keeping them in version control.</p>
+<p>It’s far safer to store them in environment variables, and there’s an R package by the RStudio team called <a href="https://github.com/rstudio/config">config</a> that makes working with environment variables really pleasant.</p>
+<p>When you call <code>library(config)</code>, rmarkdown knows to look for a file called <code>config.yml</code> to get the values for your environment variables.</p>
+<p>The <code>config.yml</code> must follow the standard YML format. For this project, I wanted to store my API key and DB credentials, so mine looked something like this:</p>
+<pre><code>default:
+  ub_api_key: &quot;&lt;API KEY&gt;&quot;
+  host: &quot;mydb-host.rds.amazonaws.com&quot;
+  dbname: &quot;mydb&quot;
+  user: &quot;tim&quot;
+  password: &quot;&lt;mypassword&gt;&quot;</code></pre>
+<p>In my R code, if I want the value of my API key, I simply call <code>config::get('ub_api_key')</code>. This keeps my secrets out of the document, out of version control, and makes me feel like a legit security expert.</p>
+</div>
+<div id="extract-and-transform" class="section level3">
+<h3>Extract and Transform</h3>
+<p>Let’s set up our code to access the Unbounce API. According to their <a href="https://developer.unbounce.com/api_reference/#id_pages__page_id__leads">documentation</a> you need to add your page ID to the URL that you send your <code>GET</code> request to. In my case, I have several page IDs. My team may create new ones in the future as well, so rather than list them out I want some programmatic way of querying them. It turns out there’s <a href="https://developer.unbounce.com/api_reference/#id_domains__domain_id__pages">another API endpoint that will return your page IDs</a>, so let’s start with that.</p>
+<p>Of course, we could use the <code>curl</code> command for this. Rmarkdown allows us to write code chunks in bash. If we were do that, it would look something like this:</p>
+<p>There’s 3 disadvantages of going this route. One is that the output goes to <code>stout</code>. You could avoid that and put it in a file by passing something like <code>-o /tmp/pages.json</code> but then you’d have to read it back into R, which isn’t ideal and the second disadvantage. Third is that the <code>config</code> package doesn’t set bash environment variables. That means we can’t call <code>echo $ub_api_key</code> on the command line to see our API key. To get that to work we’d have to do a hacky workaround and put <code>Sys.setenv(API_KEY = config::get('ub_api_key'))</code>. This is a lot of extra work, and anyway it’s more fun to do it all in R, so we’ll turn to the <a href="https://github.com/r-lib/httr">httr</a> package.</p>
+<p>In the above code, we stored the request from our URL in a variable called <code>r</code>. Then we extracted the content from that request in “text” format, which returns it as a bunch of JSON. Finally, we used <code>fromJSON</code> from the <code>jsonlite</code> package to flatten the content into a named list of two data frames. The list named <code>&quot;pages&quot;</code> turned out to have the page IDs, and so we stored that in a data frame along with a few other fields.</p>
+<div id="leads-as-list-columns" class="section level4">
+<h4>Leads as List Columns</h4>
+<p>Now we have a data frame with all our page IDs. It turned out that this other field we got, <code>metadata.related.leads</code> has the page ID already formatted properly the way the lead API endpoint wants it. How convenient!</p>
+<p>We know from the above example that hitting this API returns semi-structured data. That tends to be the case with APIs. They are of great use to web developers but not so fun for us tidy data scientists to use. No matter - we now have a great data type in R to work with for these exact situations: list columns. List columns give you all the semi-structured advantages of lists, but adjoined to your data frame.</p>
+<p>One of my favorite workflows nowadays is to use <code>mutate</code> and <code>map</code> together to produce a list column for each observation in a data frame. Let me show you how. First we want to write a function that takes a URL as an argument, hits the lead API endpoint, returns the content, and tidies it up a bit.</p>
+<p>This function is very similar to the one we had above. Given one of the URLs in <code>page_df</code>, it will return the lead object from the API. Rather than write a for-loop and break our data frame workflow, we can achieve the same thing with <code>mutate</code> and <code>map</code> staying in the tidyverse.</p>
+<p>We now have a data frame that looks like <code>page_df</code> except there’s an additional list-column called <code>leads</code> containing tidy results from the API request. Lastly, we can just unpack that list column using the <code>unnest</code> function.</p>
+<p>We now have a data frame with our lead email addresses, the unbounce pages we got those leads from, a timestamp, and the IP address (useful for detecting fakes). We combined the extract stage, where we sent requests to the Unbounce API and got semi-structured data returned, with the transform stage in which we took that semi-structured data and tidied it up in a format that will be useful for later analysis.</p>
+</div>
+</div>
+<div id="load-this-part-is-easy" class="section level3">
+<h3>Load (this part is easy)</h3>
+<p>Now that we’ve got our data, let’s put it somewhere safe and accessible to others. <code>save.image()</code> isn’t appropriate here, since that will only save it locally on my computer for now.</p>
+<p>I created a PostgreSQL analytics database for this project a few weeks back, mainly for warehousing <a href="segment.com">segment</a> events. That seems like a perfect place to store this data as well. By storing it there, anyone with database credentials can see the data and use it in applications or reports. And people without the credentials can’t, which is also great since we’re storing email addresses of potential leads.</p>
+<p><code>dplyr</code> makes it very simple to write to a database. Here’s how. First you define your connection, using your environment variables from <code>config.yml</code> to keep your secrets safe.</p>
+<p>Now we can use the <code>copy_to</code> function in dplyr to write our leads to a table called <code>unbounce_leads</code> in our PostgreSQL database.</p>
+<p>That’s pretty powerful! As much as I love SQL (and I really do), creating tables was always a pain to me. I would always forget the syntax, and it seemed too cumbersome to call out each data type specifically. Data scientists work fast so we don’t have time to for tightly typed things. And the <code>COPY</code> function in Postgres, don’t get me started . . .</p>
+<p>At this point we’re done with our ETL. We can click “Knit” in RStudio and it should just run. Note that my choice to use rmarkdown is totally arbitrary at this point. We could have done all this in a single R script, but the rmarkdown choice will become clear in the next section.</p>
+</div>
+<div id="going-from-singular-to-plural" class="section level3">
+<h3>Going from singular to plural</h3>
+<p>We just wrote ETL to extract data from a couple API endpoints, transform it into tidy format, and load it into a PostgreSQL database. That’s awesome. But remember in the very beginning of this post I said that data scientists hate manual processes? I’m not going to be the one to wake up at 6 am and run this script each day to update my table with new leads. Even if it means just executing one command, that’s one command too many.</p>
+<p>This is where RStudio Connect’s scheduler comes in handy. If you deploy a rmarkdown document via Connect, you have an easy option to schedule it. I like to run mine at midnight each night.</p>
+<div class="figure">
+<img src="img/cron.png" alt="RStudio Connect’s Scheduler" />
+<p class="caption">RStudio Connect’s Scheduler</p>
+</div>
+<p>If you don’t have RStudio Connect, you could still schedule it using crontab, but you’d need to have it on some machine that is always running. That’s pretty easy to do - if you run into trouble just say so in the comments and I’ll pitch in.</p>
+<p>Every since I discovered this way of using rmarkdown along with RStudio Connect as an ETL tool, I’ve kind of gone crazy with it. So many marketing tools have APIs, and warehousing the data can really add value to any data science functions you plan to carry out. I’ve been warehousing a bunch of mailchimp and Facebook data this way, too.</p>
+</div>
+</div>
