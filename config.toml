@@ -17,13 +17,14 @@ title = "tim abraham"
 
 theme = "hugo-goa"
 
-[permalinks]
-    post = "/:year/:month/:day/:slug/"
-
 ## Hugo Built-in Features
 disqusShortname = "timabe-me" 
 googleAnalytics = "UA-73240359-1"
 enableRobotsTXT = true
+
+[permalinks]
+post = "/:year/:month/:day/:slug/"
+
 
 ## Site Settings
 [params]
