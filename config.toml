@@ -23,14 +23,14 @@ googleAnalytics = "UA-73240359-1"
 enableRobotsTXT = true
 
 [permalinks]
-post = "/:year/:month/:day/:slug/"
+post = "/:year/:month/:slug/"
 
 
 ## Site Settings
 [params]
 author = "tim abraham"
 authorimage = "dot.png"
-dateformat = "Jan 2, 2006"
+dateformat = "Jan 2006"
 
 ## Site Meta Settings
 [params.meta]
