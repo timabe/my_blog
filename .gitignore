@@ -4,5 +4,4 @@
 .Rproj*
 public/
 .Rproj.user
-content/*/*.html
 flags/
