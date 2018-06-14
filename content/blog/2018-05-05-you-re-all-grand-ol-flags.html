@@ -1,5 +1,5 @@
 ---
-title: You’re all grand ol’ flags!
+title: You’re All Grand ol’ Flags!
 author: Tim Abraham
 date: '2018-06-10'
 slug: you-re-all-grand-ol-flags
@@ -114,21 +114,17 @@ hex_df</code></pre>
     mutate(percent_of_total = cnt/sum(cnt))
 }
 
-color_count(&quot;../../static/img/flag_images/fi.png&quot;)</code></pre>
-<pre><code>## # A tibble: 38 x 3
-##    hex_value    cnt percent_of_total
-##    &lt;chr&gt;      &lt;int&gt;            &lt;dbl&gt;
-##  1 #FFFFFF   149464          0.597  
-##  2 #003580    94228          0.377  
-##  3 #000077     1344          0.00537
-##  4 #173B82     1060          0.00424
-##  5 #6E7BA2     1056          0.00422
-##  6 #FEFFFF     1056          0.00422
-##  7 #00006F      284          0.00113
-##  8 #E0E2E8      282          0.00113
-##  9 #FDFDFD      282          0.00113
-## 10 #1B3C82      280          0.00112
-## # ... with 28 more rows</code></pre>
+color_count(&quot;../../static/img/flags/fi.png&quot;)</code></pre>
+<pre><code>## # A tibble: 7 x 3
+##   hex_value     cnt percent_of_total
+##   &lt;chr&gt;       &lt;int&gt;            &lt;dbl&gt;
+## 1 #FFFFFF   2423088      0.605      
+## 2 #003580   1574210      0.393      
+## 3 #B7C6DB      4266      0.00107    
+## 4 #1F4E8F      1136      0.000284   
+## 5 #37619B      1136      0.000284   
+## 6 #16478B         2      0.000000500
+## 7 #275494         2      0.000000500</code></pre>
 <p>The computer is a lot closer to agreeing with us than with the case of the brown eye. It finds that 60% of the image is white, and about 39% is a particular shade of blue. However, what the hell?! It somehow identified 5 other colors, none of which account for more than 1% of the total image. To see what’s going on here, let’s zoom in on the part of the flag where the blue crosses.</p>
 <div class="figure">
 <img src="img/flag_images/finland_zoom.png" alt="Oh, c’mon!" />
@@ -145,22 +141,22 @@ color_count(&quot;../../static/img/flag_images/fi.png&quot;)</code></pre>
 <img src="img/flag_images/sz.png" alt="One of the sweetest flags in the world" />
 <p class="caption">One of the sweetest flags in the world</p>
 </div>
-<p>But when we use the 1% cutoff, we see two different shades of blue. They’re almost imperceptable to the human eye, and <a href="https://www.google.com/search?q=%233E5EB9+color">one represents 35%</a> whereas the <a href="https://www.google.com/search?q=%233D5DA7+color">other only represents 1.5%</a>.</p>
-<pre class="r"><code>color_count(&quot;../../static/img/flag_images/sz.png&quot;)</code></pre>
-<pre><code>## # A tibble: 4,080 x 3
-##    hex_value   cnt percent_of_total
-##    &lt;chr&gt;     &lt;int&gt;            &lt;dbl&gt;
-##  1 #3E5EB9   92160          0.338  
-##  2 #B10C0C   78230          0.287  
-##  3 #FFD900   30361          0.111  
-##  4 #FFFFFF   14466          0.0531 
-##  5 #000000   14053          0.0515 
-##  6 #3D5DA7    2250          0.00825
-##  7 #FED800    1290          0.00473
-##  8 #FFDB00    1287          0.00472
-##  9 #AB000D    1280          0.00469
-## 10 #FFDF00     941          0.00345
-## # ... with 4,070 more rows</code></pre>
+<p>But when we use the 1% cutoff, we see two different shades of blue. They’re almost imperceptable to the human eye, and <a href="https://www.google.com/search?q=%233E5EB9+color">one (#3E5EB9) represents 3%</a> whereas the <a href="https://www.google.com/search?q=%233D5DA7+color">other (#3D5DA7) only represents 1.8%</a>.</p>
+<pre class="r"><code>color_count(&quot;../../static/img/flags/sz.png&quot;) </code></pre>
+<pre><code>## # A tibble: 1,187 x 3
+##    hex_value     cnt percent_of_total
+##    &lt;chr&gt;       &lt;int&gt;            &lt;dbl&gt;
+##  1 #3E5EB9   1556480         0.356   
+##  2 #B10C0C   1436165         0.329   
+##  3 #FFD900    661149         0.151   
+##  4 #000000    309063         0.0707  
+##  5 #FFFFFF    281048         0.0643  
+##  6 #3D5DA7     77973         0.0178  
+##  7 #A70000      9172         0.00210 
+##  8 #627596      5120         0.00117 
+##  9 #EBA603      5120         0.00117 
+## 10 #A00B0B      1448         0.000331
+## # ... with 1,177 more rows</code></pre>
 <p>Clearly, these should both be treated as “blue”, right? Let’s look into how we might fix that.</p>
 </div>
 <div id="illuminate-me-please" class="section level2">
@@ -264,7 +260,6 @@ flag_df %&gt;%
   geom_vline(xintercept = 4e-03, color = &#39;red&#39;) +
   theme_tech(theme = &quot;blog&quot;) + 
   ggtitle(&quot;Distribution of color percentages&quot;)</code></pre>
-<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
 <p><img src="/blog/2018-05-05-you-re-all-grand-ol-flags_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
 <p>We end up getting a bimodal distribution. What are these two modes? Well the one to the right on the chart represents large color areas - the big, solid shapes of color we normally associate with flags. As that distribution tails off to the left, we get colors representing anywhere from 10% down to around 0.5%. These are mostly going to be colors that we’d be able to detect, but might represent small details of a flag like the blue shields in the Portugese flag or the brown eagle in the Mexican flag. The second mode peaks around 0.01%. Anything representing this small of a percentage is likely to be borders or gradients, like the weird stuff we saw when we zoomed in on the Finnish flag or perhaps shades of brown gradation in the Mexican flag’s eagle that got color-binned in separate boxes from the primary brown color. Even though these colors are real, they don’t feel in the spirit of the question we’re trying to answer. Just to convince you, let’s find a random flag with a binned color representing around 0.01% and see if we can detect it.</p>
 <pre class="r"><code>set.seed(5446)

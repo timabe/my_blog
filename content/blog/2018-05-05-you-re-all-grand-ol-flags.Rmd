@@ -1,5 +1,5 @@
 ---
-title: You’re all grand ol’ flags!
+title: You’re All Grand ol’ Flags!
 author: Tim Abraham
 date: '2018-06-10'
 slug: you-re-all-grand-ol-flags
@@ -119,7 +119,7 @@ color_count <- function(path) {
     mutate(percent_of_total = cnt/sum(cnt))
 }
 
-color_count("../../static/img/flag_images/fi.png")
+color_count("../../static/img/flags/fi.png")
 ```
 
 The computer is a lot closer to agreeing with us than with the case of the brown eye. It finds that 60% of the image is white, and about 39% is a particular shade of blue. However, what the hell?! It somehow identified 5 other colors, none of which account for more than 1% of the total image. To see what's going on here, let's zoom in on the part of the flag where the blue crosses.
@@ -136,10 +136,10 @@ An example of a false positive would be Swaziland. I'd say the flag is blue, yel
 
 ![One of the sweetest flags in the world](img/flag_images/sz.png)
 
-But when we use the 1% cutoff, we see two different shades of blue. They're almost imperceptable to the human eye, and [one represents 35%](https://www.google.com/search?q=%233E5EB9+color) whereas the [other only represents 1.5%](https://www.google.com/search?q=%233D5DA7+color). 
+But when we use the 1% cutoff, we see two different shades of blue. They're almost imperceptable to the human eye, and [one (#3E5EB9) represents 3%](https://www.google.com/search?q=%233E5EB9+color) whereas the [other (#3D5DA7) only represents 1.8%](https://www.google.com/search?q=%233D5DA7+color). 
 
 ```{r swaziland example}
-color_count("../../static/img/flag_images/sz.png")
+color_count("../../static/img/flags/sz.png") 
 ```
 Clearly, these should both be treated as "blue", right? Let's look into how we might fix that.
 
@@ -231,7 +231,7 @@ flag_df <- flag_df %>%
 
 Now that we have our 18 color bins for each flag, let's look at the distribution of color percentages. Since we're interested in the long tail, we'll use a log scale.
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(ggtech)
 flag_df %>% 
   filter(Pct>0) %>% 
