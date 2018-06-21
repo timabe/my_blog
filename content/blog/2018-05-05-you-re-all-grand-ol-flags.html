@@ -13,27 +13,27 @@ tags:
 
 
 
-<p>If you’re anything like me you go to pub trivia once a week with your friends and spend your free time thinking up interesting and novel trivia questions. It was a fateful day when this fun question popped into my head:</p>
+<p>The other day I was trying to think of a good trivia question, and this one popped into my head:</p>
 <blockquote>
 <p>What country’s flag has the most colors?</p>
 </blockquote>
 <p>It’s a hard question, right? It’s easy to think of flags with two colors (Japan, China) and even easier to think of flags with three colors. In my head I can think of maybe one flag with 4 colors although I can’t think which country it belongs to. But are there any flags with 5 or more colors?</p>
-<p>Instead of doing what any normal person should do, which is just to google the answer, I did something really dumb instead. I tried to solve the problem using a computer. What follows is part cautionary tale, part fun data exploration, part history lesson, and part philosophical waxing on very cerebal questions like what it means to be human. We’ll play with multi dimensional matrices and learn about a not so secret society called the International Commission on Illumination that sounds like something Dan Brown might reference in the Da Vinci Code, part 2.</p>
-<p>Of course, you could also just google the answer. But, c’mon and follow me down this rabbit hole.</p>
+<p>Instead of doing what any normal person should do, which is just to Google the answer, I did something really dumb instead. I tried to solve the problem using a computer. What follows is part cautionary tale, part fun data exploration, part history lesson, and part philosophical waxing on very cerebral questions like what it means to be human. We’ll play with multi dimensional matrices, look at a bunch of very pretty flags, and learn about a not so secret society called the International Commission on Illumination that sounds like something Dan Brown might reference in the Da Vinci Code, part 2.</p>
+<p>Of course, you could also just Google the answer. But, c’mon and follow me down this rabbit hole.</p>
 <div id="computers-spoil-everything" class="section level2">
 <h2>Computers spoil everything</h2>
-<p>As humans we are incredible at pattern recognition and classification. Practically every living and non-living thing in this world is a unique collection of molecules, yet we’re very good at clumping these molecule collections into generalizable things like elephants, bamboo trees, and Grecian urns. Imagine if we lacked this ability (or read the Borges short story <a href="https://faculty.washington.edu/timea/art360/funes.pdf">Funes, his memory</a> which is about a man who falls off a horse and gains perfect memory, therefore making normal human pattern classification unneccessary). Computers, like Funes, are very good at being absolutely precise. That’s almost the definition of a computer. Everything on a computer is represented in ones and zeros. Humans don’t need to understand the details of how we store and process information to understand the information itself.</p>
+<p>As humans we are incredible at pattern recognition and classification. Practically every living and non-living thing in this world is a unique collection of molecules, yet we’re very good at clumping these molecule collections into generalization things like elephants, bamboo trees, and Grecian urns. Imagine if we lacked this ability (or read the Borges short story <a href="https://faculty.washington.edu/timea/art360/funes.pdf">Funes, his memory</a> which is about a man who falls off a horse and gains perfect memory, therefore making normal human pattern classification unnecessary). Computers, like Funes, are very good at being absolutely precise. That’s almost the definition of a computer. Everything on a computer is represented in ones and zeros. Humans don’t need to understand the details of how we store and process information to understand the information itself.</p>
 <div class="figure">
 <img src="img/brown_eye.jpg" alt="A picture is worth a million pixels" />
 <p class="caption">A picture is worth a million pixels</p>
 </div>
 <p>Take the humble brown eye. When I look at the photo above, I know immediately that I’m looking at an eye and the color of the eye is brown. How I am able to know that immediately is a mystery yet to be solved and would require full knowledge of how our brains work, but the beauty is that we’re here and doing just fine without knowing how that sausage is made. Once we fully understand that, I’m fairly confident that all hell will break loose and we’ll kiss goodbye whatever it meant to be human, so let’s just be blissful about our own ignorance.</p>
-<p>How might a computer arrive at the same conclusion that this is a brown eye? Well, first we have to convert the physical, real world brown eye into a digital representation, which has already been done. That digital representation is a collection of over 250,000 pixels. Each of these pixels is represented by a hexidecimal value which corresponds to a combination of a certain about of red, green, and blue. If you look closely at the iris, you’ll see that there are many shades of brown, and even some blue, red, and white in there due to the reflection of a window and building in the eye. Yikes, the devil is in the details. Whereas our brains can ignore the reflection and the many unique colors and simply label this “brown”, a computer gets all boggled down in the details. And keep in mind that I’m only talking about the iris, whereas the photo also includes the whites, the vains, the pupil, and the skin.</p>
-<p>Am I getting too abstract? Well I’m just getting started. But let’s get a bit more concrete here in terms of what the image actually means in to the computer with a code example in R. If you’ve never played around with image data in R, well you’re just like me before I went down this crazy rabbit hole. I’ll try to go slow and explain what’s going on. We’ll use the <a href="https://cran.r-project.org/web/packages/colordistance/index.html">colordistance</a> package to load the photo into R, where it will be represented as a list of 4 elements. One of these elements, called <code>original.rgb</code>, is a 3-dimensional array that can be interpretted as</p>
+<p>How might a computer arrive at the same conclusion that this is a brown eye? Well, first we have to convert the physical, real world brown eye into a digital representation, which has already been done. That digital representation is a collection of over 250,000 pixels. Each of these pixels is represented by a hexadecimal value which corresponds to a combination of a certain about of red, green, and blue. If you look closely at the iris, you’ll see that there are many shades of brown, and even some blue, red, and white in there due to the reflection of a window and building in the eye. Yikes, the devil is in the details. Whereas our brains can ignore the reflection and the many unique colors and simply label this “brown”, a computer gets all boggled down in the details. And keep in mind that I’m only talking about the iris, whereas the photo also includes the whites, the veins, the pupil, and the skin.</p>
+<p>Am I getting too abstract? Well I’m just getting started. But let’s get a bit more concrete here in terms of what the image actually means in to the computer with a code example in R. If you’ve never played around with image data in R, well you’re just like me before I embarked on this journey. I’ll try to go slow and explain what’s going on. We’ll use the <a href="https://cran.r-project.org/web/packages/colordistance/index.html">colordistance</a> package to load the photo into R, where it will be represented as a list of 4 elements. One of these elements, called <code>original.rgb</code>, is a 3-dimensional array that can be interpreted as</p>
 <ul>
 <li>410 rows</li>
 <li>612 columns</li>
-<li>3 channels of weights, corresponding to the redness, greeness, and blueness of the pixel</li>
+<li>3 channels of weights, corresponding to the redness, greenness, and blueness of the pixel</li>
 </ul>
 <pre class="r"><code>library(colordistance)
 # load the image as a list of 4 elements
@@ -47,7 +47,7 @@ dim(eye_rgb)</code></pre>
 <p>Let’s look at the first pixel in the image.</p>
 <pre class="r"><code>eye_rgb[1,1,1:3]</code></pre>
 <pre><code>## [1] 0.7803922 0.6784314 0.6274510</code></pre>
-<p>So the first pixel has a weight of <code>0.78</code> red, <code>0.68</code> green, and <code>0.63</code> blue. Rather than representing this as a mixture of three different colors, it makes more sense and is more generally recognized in computer land to refer to this as one color and to use a hexidecimal representation for that.</p>
+<p>So the first pixel has a weight of <code>0.78</code> red, <code>0.68</code> green, and <code>0.63</code> blue. Rather than representing this as a mixture of three different colors, it makes more sense and is more generally recognized in computer land to refer to this as one color and to use a hexadecimal representation for that.</p>
 <pre class="r"><code># convert these 3 weights to a hex value
 rgb(
   red = eye_rgb[1,1,1],
@@ -82,12 +82,12 @@ hex_df</code></pre>
 ##  9 #C1A599     503 0.200%          
 ## 10 #C5ADA1     472 0.188%          
 ## # ... with 42,851 more rows</code></pre>
-<p>This is a long, but hopefully didactic way of saying that this photo of a brown eye is more than meets the eye. While I can appologize for that bad pun, I can do nothing about the fact that this photo contains exactly 42,861 unique digitial colors. And it’s not like one color dominates, either. The most common color <code>#C9AEA3</code> represents just over one half of one percent of the photo. And you thought 50 shades of grey was a way to say things are complicated!</p>
+<p>This is a long, but hopefully didactic way of saying that this photo of a brown eye is more than meets the eye. While I can apologize for that bad pun, I can do nothing about the fact that this photo contains exactly 42,861 unique digital colors. And it’s not like one color dominates, either. The most common color <code>#C9AEA3</code> represents just over one half of one percent of the photo. And you thought 50 shades of grey was a way to say things are complicated!</p>
 <p>Even the most discerning human eye would have trouble describing more than a dozen or so colors in this photo, yet a computer is able to tell us precisely that there are 42,861 colors all of which represent less than 1 percent of the total image. And this basically sums up what computers are good at (telling us there are 42,861 colors), and what humans are good at (telling us this photo is brown, white, flesh colored, and black). And this is why computers spoil everything. How can I get the computer to tell me the colors of this photo in the fast and loose, heuristic driven world that we humans live, breathe, and communicate in?</p>
 </div>
 <div id="organic-to-symbolic" class="section level1">
 <h1>Organic to symbolic</h1>
-<p>Here in our analog world, the above way of thinking gets us into even more trouble because colors exist on a continuous scale making my iris an infinite number of colors! Fortunately, thinking about that doesn’t keep me up at night and I’m easily able to abstract it away, call it brown, and fall asleep to YouTube videos. We have no trouble taking the continuous color spectrum of the organic world and dividing it into a discrete number of colors that we can give names to. What’s even cooler, though, is that we partition that space differently depending on the context. I use a different partition of colors if I’m teaching a kintergarten class than if I’m discussing Rothko with the type of artsy people that keep the Pantone Color book on their desk.</p>
+<p>Here in our analog world, the above way of thinking gets us into even more trouble because colors exist on a continuous scale making my iris an infinite number of colors! Fortunately, thinking about that doesn’t keep me up at night and I’m easily able to abstract it away, call it brown, and fall asleep to YouTube videos. We have no trouble taking the continuous color spectrum of the organic world and dividing it into a discrete number of colors that we can give names to. What’s even cooler, though, is that we partition that space differently depending on the context. I use a different partition of colors if I’m teaching a kindergarten class than if I’m discussing Rothko with the type of artsy people that keep the Pantone Color book on their desk.</p>
 <p>Colors, the way we speak about them, are more like symbols. If you’ve read the book <a target="_blank" href="https://www.amazon.com/gp/product/0062316117/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=0062316117&linkCode=as2&tag=timabe-20&linkId=49a9c4f0e06fc4d001cd369b48b5cf24">Sapiens</a><img src="//ir-na.amazon-adsystem.com/e/ir?t=timabe-20&l=am2&o=1&a=0062316117" width="1" height="1" border="0" alt="" style="border:none !important; margin:0px !important;" />, you know that it’s our ability to think and communicate in terms of symbols that differentiates us from other animals (and if you haven’t read it, I highly recommend reading it!). As humans, we’ve organized our lives around symbols and you could argue that none looms larger over our lives than the good old modern nation state. Somewhere in history, we decided to create these colorful banners to advertise which nation state we belong to and flags were born. As flags are man-made symbols, they tend to be based on simple colors and shapes. When a feudal lord decided to hop on the nation state bandwagon and create a flag, he used the simple notion of colors - the one we learn about in kindergarten when we are given our public school issued box of crayolas. Which brings us back to our original question: which flag has the most colors? Luckily, flags are symbols based on simple colors so we shouldn’t run into the same kinds of problems we did with the iris when the computer told us it was over 40,000 different tiny colors.</p>
 <p>That’s what I thought at least, going into this. . .</p>
 <div id="finland" class="section level2">
@@ -130,7 +130,7 @@ color_count(&quot;../../static/img/flags/fi.png&quot;)</code></pre>
 <img src="img/flag_images/finland_zoom.png" alt="Oh, c’mon!" />
 <p class="caption">Oh, c’mon!</p>
 </div>
-<p>When you zoom in there really close you can see that the colors blend at the edges to form a few different shades of blue. Why this is the case, I’m not sure. If I had to guess, it would be related to the <code>PNG</code> file format, which will pixelate when resized or converted from a vector based graphic. In any case, it certainly complicates something that I thought would be relatively straight forward. Such is life, right? Let’s tredge on.</p>
+<p>When you zoom in there really close you can see that the colors blend at the edges to form a few different shades of blue. Why this is the case, I’m not sure. If I had to guess, it would be related to the <code>PNG</code> file format, which will pixelate when resized or converted from a vector based graphic. In any case, it certainly complicates something that I thought would be relatively straight forward. Such is life, right? Let’s trudge on.</p>
 <p>In the case of Finland, we can easily use our judgement and say the the first two colors, which comprise over 99% of the image, are the only two colors that matter. Unfortunately, this simple rule won’t work for our entire set of flags. If we rule out any hex value comprising less than 1% of the total image, we will get false negatives and false positives. A false negative can be seen on the flag of Portugal. Most people would say this flag is red, green, yellow, white and blue. However, the blue shields on the flag turn out to represent only 0.4% of the total, so our simple 1% threshold would fail to detect a color that human intuition easily detects.</p>
 <div class="figure">
 <img src="img/flag_images/pt.png" alt="Portugal. The Flag" />
@@ -141,8 +141,9 @@ color_count(&quot;../../static/img/flags/fi.png&quot;)</code></pre>
 <img src="img/flag_images/sz.png" alt="One of the sweetest flags in the world" />
 <p class="caption">One of the sweetest flags in the world</p>
 </div>
-<p>But when we use the 1% cutoff, we see two different shades of blue. They’re almost imperceptable to the human eye, and <a href="https://www.google.com/search?q=%233E5EB9+color">one (#3E5EB9) represents 3%</a> whereas the <a href="https://www.google.com/search?q=%233D5DA7+color">other (#3D5DA7) only represents 1.8%</a>.</p>
-<pre class="r"><code>color_count(&quot;../../static/img/flags/sz.png&quot;) </code></pre>
+<p>But when we use the 1% cutoff, we see two different shades of blue. They’re almost imperceptible to the human eye, and <a href="https://www.google.com/search?q=%233E5EB9+color">one (#3E5EB9) represents 36%</a> whereas the <a href="https://www.google.com/search?q=%233D5DA7+color">other (#3D5DA7) only represents 1.8%</a>.</p>
+<pre class="r"><code>swaziland_path &lt;- file.path(&quot;../../static/img/flags/sz.png&quot;)
+color_count(swaziland_path)</code></pre>
 <pre><code>## # A tibble: 1,187 x 3
 ##    hex_value     cnt percent_of_total
 ##    &lt;chr&gt;       &lt;int&gt;            &lt;dbl&gt;
@@ -161,40 +162,21 @@ color_count(&quot;../../static/img/flags/fi.png&quot;)</code></pre>
 </div>
 <div id="illuminate-me-please" class="section level2">
 <h2>Illuminate me, please</h2>
-<p>I’m sure we’ve all at some point seen some version of the color spectrum. If not, below lies a famous one which was created long before modern computers were around, in 1931 by the International Commission on Illumination. Yes, I told you we’d get to that and yes, it is a real thing. In 1931, this wacky bunch convened to decide on the world’s first quantitaive measure of color. What I would give to go back in time. . . Anyway, the colorspace they settled on was based on the three types of cones in our eyes which are receptive to red, green, and blue. Therefore, using the scientific knowledge of the time, they defined all colors as combinations of some amount of red, green, and/or blue. I’m trying to stay out of the weeds here, and to be honest this stuff is a little over my head, but I’ll include some interesting articles at the bottom of this essay for readers who want to go down the rabbit hole.</p>
+<p>I’m sure we’ve all at some point seen some version of the color spectrum. If not, below lies a famous one which was created long before modern computers were around, in 1931 by the International Commission on Illumination. Yes, I told you we’d get to that and yes, it is a real thing. In 1931, this wacky bunch convened to decide on the world’s first quantitative measure of color. What I would give to go back in time. . . Anyway, the colorspace they settled on was based on the three types of cones in our eyes which are receptive to red, green, and blue. Therefore, using the scientific knowledge of the time, they defined all colors as combinations of some amount of red, green, and/or blue. I’m trying to stay out of the weeds here, and to be honest this stuff is a little over my head, but I’ll include some interesting articles at the bottom of this essay for readers who want to get in the weeds.</p>
 <div class="figure">
 <img src="img/cie_space.png" alt="1931 CIE Color Space" />
 <p class="caption">1931 CIE Color Space</p>
 </div>
 <p>Having a quantitative scale for colors yields two cool results. One is that we can better communicate colors. So a graphic designer doesn’t have to call the printer and say “can you reprint and add just a little more blue?”. She can just relay the RGB values she wants and expect them to be rendered faithfully. Secondly, where there’s numbers there’s math. With the RGB scale, we can perform all our favorite math things with colors like addition, subtraction, distance, multiplication, clustering, binning, etc.</p>
-<p>Let’s go back to our Swaziland example, where I mentioned we have two very similar shades of blue, leading to a false positive when we use our naive rule of filtering out colors at the 1% level. Our brains told us we were looking at just one blue, and with the RGB colorspace we can now speak objectively about the them. Below is a glimpse of a random sample of the pixels in the Swaziland flag, plotted in the three dimensional RGB space. There’s a simple function in the <code>colordistance</code> library to do this called <code>plotPixels</code>.</p>
-<pre class="r"><code>loadImage(&quot;../../static/img/flag_images/sz.png&quot;) %&gt;% 
-  plotPixels(n = 500)</code></pre>
+<p>Let’s go back to our Swaziland example, where I mentioned we have two very similar shades of blue, leading to a false positive when we use our naive rule of filtering out colors at the 1% level. Our brains told us we were looking at just one blue, and with the RGB colorspace we can now speak objectively about them. Below is a glimpse of a random sample of the pixels in the Swaziland flag, plotted in the three dimensional RGB space. There’s a simple function in the <code>colordistance</code> library to do this called <code>plotPixels</code>.</p>
+<pre class="r"><code>loadImage(swaziland_path) %&gt;% 
+  plotPixels(n = 1000, lower = NULL, upper = NULL)</code></pre>
 <p><img src="/blog/2018-05-05-you-re-all-grand-ol-flags_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
-<p>We can see the two blue values, and we can also see that they’re very close in the RGB 3 dimensional space. Don’t you just want to reach your hand in there and squeeze them together? The same is noticable for black, brown, grey, and red colors. Normally, when we have continuous data like this and we want to reduce it into something more discrete, we have two go-to methods: Clustering and Binning. And of course, the <code>colordistance</code> package has functions for clustering and binning colors (what a great library!). Which one do we want? Well think about it. Clustering colors, which is done using k-means, requires us to state the number of clusters <em>a priori</em>. But our whole goal of this essay is to have the computer tell us how many colors there are. So we want to stay away from any method where we tell the computer to work with a number we’re giving it ahead of time. Binning on the other hand, is a technique that divides a space into equal sized ranges, and counts the number of observations in each range. To see what I mean, let’s bin the colors of the Swaziland flag.</p>
-<pre class="r"><code>loadImage(&quot;../../static/img/flag_images/sz.png&quot;) %&gt;% 
-  getImageHist(bins = c(3,3,2), lower = NULL, upper = NULL)</code></pre>
+<p>We can see the blue values, and we can also see that they’re very close in the RGB 3 dimensional space. Don’t you just want to reach your hand in there and squeeze them together? The same is noticeable for black, brown, grey, and red colors. Normally, when we have continuous data like this and we want to reduce it into something more discrete, we have two go-to methods: Clustering and Binning. And of course, the <code>colordistance</code> package has functions for clustering and binning colors (what a great library!). Which one do we want? Well think about it. Clustering colors, which is done using k-means, requires us to state the number of clusters <em>a priori</em>. But our whole goal of this essay is to have the computer tell us how many colors there are. So we want to stay away from any method where we tell the computer to work with a number we’re giving it ahead of time. Binning on the other hand, is a technique that divides a space into equal sized ranges, and counts the number of observations in each range. To see what I mean, let’s bin the colors of the Swaziland flag.</p>
+<pre class="r"><code>sz &lt;- loadImage(swaziland_path) %&gt;% 
+  getImageHist(bins = c(3,3,2), lower = NULL, upper = NULL, title = &quot;Swaziland Flag Color Bins&quot;)</code></pre>
 <pre><code>## Using 3*3*2 = 18 bins</code></pre>
 <p><img src="/blog/2018-05-05-you-re-all-grand-ol-flags_files/figure-html/bin%20swazi-1.png" width="672" /></p>
-<pre><code>##             r          g          b          Pct
-## 1  0.02202805 0.01872389 0.02228663 6.513718e-02
-## 2  0.52001868 0.08401901 0.05718271 1.139598e-02
-## 3  0.69415868 0.04819900 0.04753937 3.228763e-01
-## 4  0.31045752 0.36470588 0.39607843 2.200704e-05
-## 5  0.46946507 0.42127673 0.19319754 2.266725e-03
-## 6  0.85996769 0.60989433 0.02276466 4.852553e-03
-## 7  0.16666667 0.83333333 0.25000000 0.000000e+00
-## 8  0.50000000 0.83333333 0.25000000 0.000000e+00
-## 9  0.99454446 0.84842712 0.01222867 1.506382e-01
-## 10 0.05177048 0.31361525 0.71732157 5.479754e-03
-## 11 0.39448162 0.30597628 0.55324645 6.125293e-04
-## 12 0.83333333 0.16666667 0.75000000 0.000000e+00
-## 13 0.24333787 0.36865360 0.72220690 3.640808e-01
-## 14 0.45220562 0.48356757 0.64967462 6.785505e-03
-## 15 0.83333333 0.50000000 0.75000000 0.000000e+00
-## 16 0.16666667 0.83333333 0.75000000 0.000000e+00
-## 17 0.65524297 0.67911338 0.67894288 8.436033e-05
-## 18 0.98607669 0.98627178 0.98626609 6.576805e-02</code></pre>
 <p>The function <code>getImageHist</code> divides the RGB space into as many as 27 mini-cubes (although I found that using 18 works the best with the flag data). Any pixels in a given cube get averaged together, counted, and displayed on a bar chart. And as you can see, this method solved our false positive, merging the two very close blue pixels into one blue color. So this color binning method seems like a great tool to get us closer to answering the question at hand: Which flag has the most colors?</p>
 <p>Of course, color binning is not a panacea. In the case of Swaziland, note that there are still some very small bins representing colors we probably would not subjectively say exist as distinct colors in the Swaziland flag. One example is the dark red bin representing the second bar. This color is probably a result of the pixelation around the red/blue borders of the flag. It’s not something we’re supposed to see distinctly. So if we want to use this binning method to count colors, we’ll still have to find some cutoff value to throw away these edge colors.</p>
 <p>There’s another thing I haven’t brought up yet, too. I know, you’re thinking this is getting too long, but hopefully some part of you finds this entertaining too. Remember, the journey is the destination.</p>
@@ -219,17 +201,18 @@ color_count(&quot;../../static/img/flags/fi.png&quot;)</code></pre>
 </div>
 <div id="cutting-the-tail" class="section level2">
 <h2>Cutting the tail</h2>
-<p>Towards the beginning of this essay I proposed a dumb heuristic to deal with the long tail of colors. I hoped that removing any color comprising less than 1% of the total image might work, but in practice it lead to some false positives and negatives (Portugal and Swaziland being the two examples we used). Let’s see if we can use the color binned data to come up with a more principled threshold. First though, I realize we haven’t touched upon something extremeley important: our data set.</p>
+<p>Towards the beginning of this essay I proposed a dumb heuristic to deal with the long tail of colors. I hoped that removing any color comprising less than 1% of the total image might work, but in practice it led to some false positives and negatives (Portugal and Swaziland being the two examples we used). Let’s see if we can use the color binned data to come up with a more principled threshold. First though, I realize we haven’t touched upon something extremely important: our data set.</p>
 <p>The flag data I’ve been using comes from <a href="http://flagpedia.net/">flagpedia</a>. You’ll see that they have an option to download all the flags of the world in one zip file, and that they have 4 different image resolutions. I used the <code>high resolution</code> set for this analysis. It’s large enough to show good detail on the flags that have seals, while not too big to overwhelm your CPU on tasks like pixel counting and binning colors (if you have a GPU I’m sure you could use that, but if you have a GPU you probably stopped reading this awhile back and went back to your deep learning project). The files in the zip are <code>PNGs</code> and each country is identified by it’s two letter ISO code.</p>
 <p>The first thing we want to do is prepare a nice data frame with all this data in it. I simply created a vector of flag images by reading the files in the directory and removing the <code>.png</code> file ending. Then, using the <a href="https://cran.r-project.org/web/packages/countrycode/countrycode.pdf">countrycode</a> package, I was able to get the official country names for all the ISO codes. I also added the continent for good measure.</p>
 <pre class="r"><code>flag_dir &lt;- file.path(&quot;../../static/img/flags/&quot;)
 flag_images &lt;- list.files(flag_dir)
-# flag_images
+
+library(countrycode)
 flag_df &lt;- tibble(
   flag_file_name = flag_images,
   iso_code = stringr::str_remove(flag_images, &quot;.png&quot;),
-  country = countrycode::countrycode(iso_code, origin = &quot;iso2c&quot;, destination = &quot;country.name&quot;),
-  continent = countrycode::countrycode(iso_code, origin = &quot;iso2c&quot;, destination = &quot;continent&quot;)
+  country = countrycode(iso_code, origin = &quot;iso2c&quot;, destination = &quot;country.name&quot;),
+  continent = countrycode(iso_code, origin = &quot;iso2c&quot;, destination = &quot;continent&quot;)
 )</code></pre>
 <p>Next, we want to apply the color binning sequence to all our flags. This takes a little while with the large images, so if you’re playing along at home you may want to use smaller images or just wait the ten minutes it takes with the large ones. I decided to write a function that takes the filename as an argument, loads it, bins and counts the pixels, converts the RGB values into its hex value, and calculates the percentage of the total each color bin comprises.</p>
 <p>Then I simply map that function to each file in our data frame.</p>
@@ -237,7 +220,12 @@ flag_df &lt;- tibble(
   
   flag_png = str_c(iso_code, &quot;.png&quot;)
 
-  color_bins &lt;- colordistance::getImageHist(file.path(flag_dir, flag_png), bins = bin_vec, plotting = F, lower = NULL, upper = NULL) %&gt;% 
+  color_bins &lt;- colordistance::getImageHist(file.path(flag_dir, flag_png), 
+                                            bins = bin_vec, 
+                                            plotting = F, 
+                                            lower = NULL, 
+                                            upper = NULL
+                                            ) %&gt;% 
     as_tibble() %&gt;% 
     mutate(hex = rgb(r, g, b)) %&gt;% 
     arrange(desc(Pct))
@@ -246,13 +234,13 @@ flag_df &lt;- tibble(
   
 }
 
-flag_df &lt;- flag_df %&gt;% 
+flag_color_df &lt;- flag_df %&gt;% 
   mutate(color_bins = purrr::map(iso_code, pixel_bins)) %&gt;% 
   unnest(color_bins) %&gt;% 
   group_by(country)</code></pre>
 <p>Now that we have our 18 color bins for each flag, let’s look at the distribution of color percentages. Since we’re interested in the long tail, we’ll use a log scale.</p>
 <pre class="r"><code>library(ggtech)
-flag_df %&gt;% 
+flag_color_df %&gt;% 
   filter(Pct&gt;0) %&gt;% 
   ggplot() + 
   geom_histogram(aes(Pct)) + 
@@ -261,9 +249,9 @@ flag_df %&gt;%
   theme_tech(theme = &quot;blog&quot;) + 
   ggtitle(&quot;Distribution of color percentages&quot;)</code></pre>
 <p><img src="/blog/2018-05-05-you-re-all-grand-ol-flags_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
-<p>We end up getting a bimodal distribution. What are these two modes? Well the one to the right on the chart represents large color areas - the big, solid shapes of color we normally associate with flags. As that distribution tails off to the left, we get colors representing anywhere from 10% down to around 0.5%. These are mostly going to be colors that we’d be able to detect, but might represent small details of a flag like the blue shields in the Portugese flag or the brown eagle in the Mexican flag. The second mode peaks around 0.01%. Anything representing this small of a percentage is likely to be borders or gradients, like the weird stuff we saw when we zoomed in on the Finnish flag or perhaps shades of brown gradation in the Mexican flag’s eagle that got color-binned in separate boxes from the primary brown color. Even though these colors are real, they don’t feel in the spirit of the question we’re trying to answer. Just to convince you, let’s find a random flag with a binned color representing around 0.01% and see if we can detect it.</p>
+<p>We end up getting a bi-modal distribution. What are these two modes? Well the one to the right on the chart represents large color areas - the big, solid shapes of color we normally associate with flags. As that distribution tails off to the left, we get colors representing anywhere from 10% down to around 0.5%. These are mostly going to be colors that we’d be able to detect, but might represent small details of a flag like the blue shields in the Portuguese flag or the brown eagle in the Mexican flag. The second mode peaks around 0.01%. Anything representing this small of a percentage is likely to be borders or gradients, like the weird stuff we saw when we zoomed in on the Finnish flag or perhaps shades of brown gradation in the Mexican flag’s eagle that got color-binned in separate boxes from the primary brown color. Even though these colors are real, they don’t feel in the spirit of the question we’re trying to answer. Just to convince you, let’s find a random flag with a binned color representing around 0.01% and see if we can detect it.</p>
 <pre class="r"><code>set.seed(5446)
-flag_df %&gt;% 
+flag_color_df %&gt;% 
   filter(between(Pct, 9e-05, 2e-04)) %&gt;% 
   ungroup() %&gt;% 
   sample_n(1) %&gt;% 
@@ -288,7 +276,7 @@ flag_df %&gt;%
 <div id="back-to-the-main-question" class="section level1">
 <h1>Back to the main question</h1>
 <p>At this point, we can start answering the big question. What flag has the most colors of them all?</p>
-<pre class="r"><code>winners_df &lt;- flag_df %&gt;% 
+<pre class="r"><code>winners_df &lt;- flag_color_df %&gt;% 
   # remove any colors that fall below our threshold
   filter(Pct &gt; 4e-03) %&gt;% 
   count(country, sort = T)
@@ -329,11 +317,11 @@ image_append(c(top4, bot4), stack = T) %&gt;%
 </div>
 <p>This is a beautiful array of flags, don’t you think? It makes me wonder why some countries go with a 2 or 3 color flag. These are really lovely to look at! You may have noticed that all these flags besides the one in the lower right (South Africa) are flags with seals, crests, or illustrations. This begs another question: is a flag with lots of colors necessarily colorful? Compare Belize to South Africa.</p>
 <div class="figure">
-<img src="img/beliza_za.png" alt="Who wore it best" />
+<img src="img/belize_za.png" alt="Who wore it best" />
 <p class="caption">Who wore it best</p>
 </div>
 <p>Belize’s flag is primarily blue, red, and white. Inside the seal is an illustration of two strong woodcutters standing near vegetation and holding a shield depicting tools and a boat on the sea. Our color counting method detected 9 distinct colors in this flag. Let’s see what these colors look like laid out next to each other, proportional to the space they occupy in the flag. Since we’ll be using this technique more than once, we’ll wrap it all into a function.</p>
-<pre class="r"><code>plot_proportional_colors &lt;- function(country_flag, threshold = 4e-03, data = flag_df) {
+<pre class="r"><code>plot_proportional_colors &lt;- function(country_flag, threshold = 4e-03, data = flag_color_df) {
   flag_colors &lt;- data %&gt;%
     ungroup() %&gt;% 
     filter(country == country_flag) %&gt;% 
@@ -378,8 +366,8 @@ plot_proportional_colors(country_flag = &quot;Belize&quot;)</code></pre>
 <img src="img/flag_images/lt.png" alt="Lithuania: 33% each" />
 <p class="caption">Lithuania: 33% each</p>
 </div>
-<p>Lithuania’s colors are spread out uniformly. One way we can measure for this desirable properly is to use a very trendy metric called the Kullback-Leibler divergence, or KL divergence. KL divergence measures how similar (or different) two distributions are, a lower score meaning they’re more similar. Let’s see how our most colorful flags score in KL divergence when comparing them to a uniform distribution of colors. I’m also using the <a href="https://cran.r-project.org/web/packages/ggimage/index.html">ggimage</a> package, which I discovered while writing this and turns out to have a <code>geom_flag</code>.</p>
-<pre class="r"><code>flag_kl_div &lt;- flag_df %&gt;% 
+<p>Lithuania’s colors are spread out uniformly, lending to its more colorful appearance. One way we can measure for this desirable properly is to use a very trendy metric called the <a href="https://en.wikipedia.org/wiki/Kullback%E2%80%93Leibler_divergence">Kullback-Leibler divergence</a>, or KL divergence. KL divergence measures how similar (or different) two distributions are, a lower score meaning they’re more similar. Let’s see how our most colorful flags score in KL divergence when comparing them to a uniform distribution of colors. I’m also using the <a href="https://cran.r-project.org/web/packages/ggimage/index.html">ggimage</a> package, which I discovered while writing this and turns out to have a very handy <code>geom_flag</code>.</p>
+<pre class="r"><code>flag_kl_div &lt;- flag_color_df %&gt;% 
   ungroup() %&gt;% 
   filter(flag_file_name %in% winner_flags) %&gt;% 
   filter(Pct &gt;= 4e-03) %&gt;% 
@@ -399,9 +387,9 @@ flag_kl_div %&gt;%
   labs(y = &quot;KL Divergence&quot;, x = &quot;Color Count&quot;) + 
   theme_minimal()</code></pre>
 <p><img src="/blog/2018-05-05-you-re-all-grand-ol-flags_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
-<p>We can see that South Africa does indeed have the lowest KL divergence, indicating its colors are closest to being uniformily distributed. Next lowest are the flags with non-illustrative crests or symbols. Finally, the flags with the highest KL divergence are those with intricate illustrations like Mexico and Belize, both of which we’ve taken deeper looks at. So now we can say that, of the flags with 6 colors, South Africa is the most colorful. Here’s another nice visualization to compare the colorfulness of each flag.</p>
+<p>We can see that South Africa does indeed have the lowest KL divergence, indicating its colors are closest to being uniformly distributed. Next lowest are the flags with non-illustrative crests or symbols. Finally, the flags with the highest KL divergence are those with intricate illustrations like Mexico and Belize, both of which we’ve taken deeper looks at. So now we can say that, of the flags with 6 colors, South Africa is the most colorful. Here’s another nice visualization to compare the colorfulness of each flag.</p>
 <pre class="r"><code>flag_kl_div %&gt;% 
-  inner_join(flag_df, by = c(&#39;country&#39;, &#39;iso_code&#39;)) %&gt;% 
+  inner_join(flag_color_df, by = c(&#39;country&#39;, &#39;iso_code&#39;)) %&gt;% 
   filter(Pct &gt;= 4e-03) %&gt;% 
   ungroup() %&gt;% 
   mutate(kl_rank = dense_rank(kl)) %&gt;% 
@@ -418,9 +406,9 @@ flag_kl_div %&gt;%
     axis.text.y = element_blank(), 
     panel.grid = element_blank()
   ) +
-  ggtitle(&quot;Top 8 Flags, ranked by KL Divergence&quot;)</code></pre>
+  ggtitle(&#39;Top 8 Flags, ranked by KL Divergence \n aka &quot;Colorfulness&quot;&#39;)</code></pre>
 <p><img src="/blog/2018-05-05-you-re-all-grand-ol-flags_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
-<p>We’re still left with a problem. When comparing South Africa to Belize, we unfortunately cannot say much about which flag has the best <em>combination</em> of color count and color distribution. To do that, we’d have to figure out some tradeoff between more colors and lower KL divergence. Your threshold might be different than mine, though.</p>
+<p>We’re still left with a problem. When comparing South Africa to Belize, we unfortunately cannot say much about which flag has the best <em>combination</em> of color count and color distribution. To do that, we’d have to figure out some trade-off between more colors and lower KL divergence. Your threshold might be different than mine, though.</p>
 <p>Any other metric we might come up with for “colorfulness” will have this same problem as well. We can only rank flags by colorfulness against other flags with the same color count. So what’s the final answer? Well, not to be too much of a hippie here, but I think there can be multiple winners. At least there should be two categories: One for flags with crests, seals, or illustrations and another for flags comprised of solid shapes. In this case, we have our two winners. In the category of most colors for a flag with crests, seals, or illustrations the winner is . . .</p>
 <div id="belize-with-9-colors" class="section level3">
 <h3>Belize with 9 colors!</h3>
@@ -437,5 +425,13 @@ flag_kl_div %&gt;%
 
 </div>
 <p>Personally, if this was an Oscars-style award show I would have the second category be the equivalent of best picture which makes South Africa our big winner.</p>
+<p>I love using data to better understand complex problems. What I generally find, though, and this was especially true here, is that data begs us to rephrase our initial question and use more exact language. It can be frustrating and grating. And as we iterate on our original question, refining it and making it more exact, we have to also make sure we aren’t losing the spirit of the initial query. It’s a give and take, a push and pull, an art and a science and a struggle to align cold, hard logic with the line of thinking and intelligence that our collective brains have evolved to rally around. This might be what I love most about working with data.</p>
+</div>
+<div id="further-reading" class="section level2">
+<h2>Further Reading</h2>
+<ol style="list-style-type: decimal">
+<li><a href="https://www.gamasutra.com/blogs/AndreasBrinck/20161208/286891/History_of_the_RGB_color_model.php">History of the RGB color model</a></li>
+<li><a href="https://www.khanacademy.org/partner-content/pixar/color/color-space/e/cie-chromaticity">Kahn Academy Lesson on the CIE color space</a></li>
+</ol>
 </div>
 </div>
