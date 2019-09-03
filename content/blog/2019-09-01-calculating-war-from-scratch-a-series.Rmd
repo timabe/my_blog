@@ -1,0 +1,32 @@
+---
+title: 'Calculating WAR from Scratch: Part 1 - Introduction'
+author: tim abraham
+date: '2019-09-01'
+slug: caculating-war
+categories: []
+tags:
+  - baseball
+  - war
+comments: no
+showcomments: yes
+showpagemeta: yes
+---
+
+If you follow baseball at all, you've probably heard of the be all end all statistic [WAR](https://library.fangraphs.com/misc/war/). Over the years it's been written and talked about enough that even the casual baseball fan knows about it and probably knows more or less what it captures. The idea behind WAR is very simple. A player's WAR, or Wins Above Replacement, tells you how many wins that player adds to a team compared to an average player in a season. If you're the Angels, and your record is 88-74, and you've got Mike Trout with a WAR of 8 - you can assume that if you didn't have Trout and instead had your best AAA player spell him, you'd end up with a 80 - 82 record.
+
+If you think about it, WAR is an example of a perfect metric. It captures the one thing you care about as a baseball analyst (wins), it condenses it into one single number, and it is easy enough that you could explain it to a rich, MBA wielding baseball team owner (like George W Bush) and they'd be able to understand it, nod, give you a wink, and pat you on the butt. 
+
+I recall in the 2019 season hearing the guys who announce the A's game for the local market talk about WAR and other sabermetrics. They did a great job explaining it. When it came to explaining *how* it was calculated, they just said it involved a lot of complicated math. Fair enough, right? It got me thinking that I had never really taken a look myself how WAR was calculated. I made a note to look into it at some point. 
+
+Throughout the 2019 season I've spent an hour here and there researching how this goliath of a metric is actually made. The math that goes into some of its main components is pretty simple. The internet is littered with many articles explaining how the calculation is done, although [FanGraphs is the leader and one need not look beyond there](https://library.fangraphs.com/calculating-position-player-war-a-complete-example/). On the data side, [Baseball Savant](https://baseballsavant.mlb.com/) will give you all the stats you can pull yourself to get WAR and its subcomponents. However, the one thing I wasn't able to find is any end to end examples - something where you start with the raw data, and step-by-step build towards the final metric. It seems that the only thing that exists on the internet is either a written description of how to calculate it, or calculated statistics, but nothing in between. 
+
+In the next few posts, I'll be breaking down exactly how this sausage is made. We'll be using real data, with reproducible code written in R. I'm sure one could calculate this using excel, although it'd be a lot of work so I will leave that for another contributor. 
+
+## What is WAR? 
+
+And no, I will not be making the tired pun involving a 70s song. WAR is defined by FanGraphs (again, FanGraphs is **the** resource for this stuff) as
+
+>> WAR = (Batting Runs + Base Running Runs + Fielding Runs + Positional Adjustment + League Adjustment + Replacement Runs) / (Runs Per Win) 
+
+This is a lot, but we'll get through it. However, we'll start our journey with Batting Runs. 
+

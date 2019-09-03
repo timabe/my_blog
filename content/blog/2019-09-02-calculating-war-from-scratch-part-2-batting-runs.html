@@ -1,0 +1,789 @@
+---
+title: 'Calculating WAR from Scratch: Part 2 - Batting Runs'
+author: tim abraham
+date: '2019-09-02'
+slug: batting-runs
+categories: []
+tags:
+  - war
+  - baseball
+comments: no
+showcomments: yes
+showpagemeta: yes
+---
+
+<script src="/rmarkdown-libs/kePrint/kePrint.js"></script>
+
+
+<p>In our <a href="https://www.timabe.me/blog/caculating-war">journey of calculating WAR</a>, we will start with Batting Runs. According to FanGraphs:</p>
+<blockquote>
+<p>To calculate Batting Runs, you want <a href="https://library.fangraphs.com/offense/wraa/">Weighted Runs Above Average (wRAA)</a></p>
+</blockquote>
+<p>Weighted Runs Above Average calculates how many runs a player created compared to the average player, and is adjusted by league and park.</p>
+<p><span class="math display">\[ wRAA = ((wOBA – lgwOBA)/wOBA Scale) * PA \]</span></p>
+<p>You can already see that calculating WAR is going to be a slog. We’re only on the first component, Batting Runs, and we can already see that it’s turtles all the way down.</p>
+<p>Let’s talk about what these things mean:</p>
+<ul>
+<li>wOBA: Weighted On Base Average. This is going to be the meat of the post.</li>
+<li>lgwOBA: League wOBA. Simply the wOBA for the league</li>
+<li>wOBA Scale: We’ll see below that wOBA is scaled to look similar to On Base Percentage (OBP). This is a convenience scalar for people who are already familiar with what a good OBP looks like. But here to get wRAA, we need to un-scale it.</li>
+<li>PA: Plate appearances.</li>
+</ul>
+<div id="weighted-on-base-average---woba" class="section level2">
+<h2>Weighted On Base Average - wOBA</h2>
+<p>The principle behind wOBA is that not all outcomes leading to a batter getting on base are created equal. We should weigh them according to their value. Makes sense, right? But how to define value? Here value is defined by <strong>run expectancy</strong> based on base-out states. Again, I’m heavily paraphrasing a <a href="https://library.fangraphs.com/offense/woba/">FanGraphs article here</a>, and if you want to read about these stats they do a much better job. I want to introduce just enough context here such that the actual calculations have some intuition behind them.</p>
+<p>Below is an image from Fangraphs, showing the weights for the 2013 season. 0.69 for a walk. 2.10 for a home run. Where do these weights come from? I’ll be showing a reproducible example below, so please read on!</p>
+<div class="figure">
+<img src="img/fangraphs_woba.png" alt="Courtesy of Fangraphs" />
+<p class="caption">Courtesy of Fangraphs</p>
+</div>
+<div id="getting-the-data-from-baseball-savant" class="section level3">
+<h3>Getting the data from Baseball Savant</h3>
+<p>This could really be its own blog post. However, I want to focus more on the calculation and less on the data scraping, so I’ll breeze through this part.</p>
+<p>To calculate wOBA, we need data that tells us the situational context for each event that happened in the course of a season of Major League Baseball. By situational, I mean for each play we have to know how many outs there were and whether there were any runners on any of the bases. This is what we call <strong>base-out states</strong>.</p>
+<p>Since WAR is based on full seasons, we’ll need to pull this info for a full season. In this example, I’ll use the 2018 season.</p>
+<p><a href="https://baseballsavant.mlb.com/">Baseball Savant</a> allows you to pass a parametrized URL and get back a csv of statcast data. To avoid sending a request for a large amount of data, I’ve written a function, <code>stat_cast_urls()</code> that allows you to pass a year in as an argument and get a list of URLs back, each of which span one week. This allows you to break the request into smaller weekly chunks.</p>
+<pre class="r"><code>library(tidyverse)
+
+stat_cast_urls &lt;- function(year, params) {
+  
+  start_season &lt;- lubridate::make_date(year = year, month = 4, day = 1)
+  end_season &lt;- lubridate::make_date(year = year, month = 10, day = 7)
+  
+  season_dates &lt;- seq.Date(start_season, end_season, by = &#39;day&#39;)
+  
+  start_indices &lt;- seq(from = 1, to = length(season_dates), by = 7)
+  end_indices &lt;- seq(from = 7, to = length(season_dates) + 7, by = 7)
+  
+  start_dates &lt;- as.character(season_dates[start_indices])
+  end_dates &lt;- as.character(season_dates[end_indices])
+  s_year &lt;- str_c(year, &#39;|&#39;)
+  add_url_params &lt;- function(start, end) {
+    list(
+      c(&quot;&amp;all=&quot;, &quot;true&quot;)
+      , c(&quot;&amp;group_by=&quot;, &quot;name&quot;)
+      , c(&quot;&amp;hfSea=&quot;, s_year)
+      , c(&quot;&amp;game_date_gt=&quot;, start)
+      , c(&quot;&amp;game_date_lt=&quot;, end)
+      , c(&quot;&amp;player_type=&quot;, &quot;batter&quot;)
+      , c(&quot;&amp;type=&quot;, &quot;details&quot;)
+    )
+  }
+  urlparams &lt;- map2(start_dates, end_dates, add_url_params)
+  
+  all_params &lt;- urlparams %&gt;% map(unlist) %&gt;% map(reduce, str_c)
+  
+  base_url &lt;- &#39;https://baseballsavant.mlb.com/statcast_search/csv?&#39;
+  
+  str_c(base_url, all_params)
+}</code></pre>
+<p>Next, you’ll want to read the csv data from these URLs. I noticed that the <code>read_csv()</code> function in R can have trouble guessing the right column data types, so I explicitly provide them in this <a href="https://gist.github.com/timabe/9c0c526cb921c6117f575b213ed918a8">gist</a>.</p>
+<pre class="r"><code># read in proper column data types
+devtools::source_gist(&#39;https://gist.github.com/timabe/9c0c526cb921c6117f575b213ed918a8&#39;)
+# read in the data to a list. This will take a few minutes as it&#39;s a lot of data.
+s_2018 &lt;- stat_cast_urls(2018) %&gt;%
+  map(safely(read_csv), na = &#39;null&#39;, col_types = statcast_cols)
+
+# pull out the results 
+results_2018 &lt;- s_2018 %&gt;% 
+  map(&#39;result&#39;)
+
+# the last list is empty, so remove it
+results_2018 &lt;- results_2018[-28]
+
+# remove deprecated columns and do renaming 
+format_data &lt;- function(df) {
+  df %&gt;% 
+    select(-fielder_2) %&gt;% 
+    rename(fielder_2=fielder_2_1) %&gt;% 
+    select(-ends_with(&#39;deprecated&#39;))
+}
+df_2018 &lt;- results_2018 %&gt;%
+  map(format_data) %&gt;% 
+  bind_rows()</code></pre>
+<p>Now we’ve got a very large data frame called <code>df_2018</code>. This is actually more than we need, but that’s okay. In addition to all the play-by-play situational data from the 2018 season, we also get the pitch-by-pitch data. This may come in handy later. For now, if we just want the play-by-play data, we’ll filter for records with an non-null <code>events</code>.</p>
+<pre class="r"><code>events_2018 &lt;- df_2018 %&gt;% 
+  filter(!is.na(events))</code></pre>
+<p>Let’s have a look at a random record here, just to build some intuition around what we’re working with.</p>
+<pre class="r"><code>set.seed(444)
+events_2018 %&gt;% 
+  sample_n(1) %&gt;% 
+  glimpse()</code></pre>
+<pre><code>## Observations: 1
+## Variables: 83
+## $ pitch_type                      &lt;chr&gt; &quot;CU&quot;
+## $ game_date                       &lt;date&gt; 2018-06-23
+## $ release_speed                   &lt;dbl&gt; 74
+## $ release_pos_x                   &lt;dbl&gt; -0.9446
+## $ release_pos_z                   &lt;dbl&gt; 6.2757
+## $ player_name                     &lt;chr&gt; &quot;Nomar Mazara&quot;
+## $ batter                          &lt;dbl&gt; 608577
+## $ pitcher                         &lt;dbl&gt; 543606
+## $ events                          &lt;chr&gt; &quot;strikeout&quot;
+## $ description                     &lt;chr&gt; &quot;called_strike&quot;
+## $ spin_dir                        &lt;dbl&gt; NA
+## $ zone                            &lt;dbl&gt; 12
+## $ des                             &lt;chr&gt; &quot;Nomar Mazara called out on stri…
+## $ game_type                       &lt;chr&gt; &quot;R&quot;
+## $ stand                           &lt;chr&gt; &quot;L&quot;
+## $ p_throws                        &lt;chr&gt; &quot;R&quot;
+## $ home_team                       &lt;chr&gt; &quot;MIN&quot;
+## $ away_team                       &lt;chr&gt; &quot;TEX&quot;
+## $ type                            &lt;chr&gt; &quot;S&quot;
+## $ hit_location                    &lt;dbl&gt; 2
+## $ bb_type                         &lt;chr&gt; NA
+## $ balls                           &lt;dbl&gt; 1
+## $ strikes                         &lt;dbl&gt; 2
+## $ game_year                       &lt;dbl&gt; 2018
+## $ pfx_x                           &lt;dbl&gt; 0.6494
+## $ pfx_z                           &lt;dbl&gt; -0.8074
+## $ plate_x                         &lt;dbl&gt; 1.0042
+## $ plate_z                         &lt;dbl&gt; 3.1443
+## $ on_3b                           &lt;dbl&gt; NA
+## $ on_2b                           &lt;dbl&gt; NA
+## $ on_1b                           &lt;dbl&gt; NA
+## $ outs_when_up                    &lt;dbl&gt; 2
+## $ inning                          &lt;dbl&gt; 1
+## $ inning_topbot                   &lt;chr&gt; &quot;Top&quot;
+## $ hc_x                            &lt;dbl&gt; NA
+## $ hc_y                            &lt;dbl&gt; NA
+## $ umpire                          &lt;dbl&gt; NA
+## $ sv_id                           &lt;chr&gt; &quot;180623_181800&quot;
+## $ vx0                             &lt;dbl&gt; 2.8315
+## $ vy0                             &lt;dbl&gt; -107.5768
+## $ vz0                             &lt;dbl&gt; 2.1123
+## $ ax                              &lt;dbl&gt; 4.423
+## $ ay                              &lt;dbl&gt; 17.1477
+## $ az                              &lt;dbl&gt; -38.8228
+## $ sz_top                          &lt;dbl&gt; 3.0857
+## $ sz_bot                          &lt;dbl&gt; 1.3954
+## $ hit_distance_sc                 &lt;dbl&gt; NA
+## $ launch_speed                    &lt;dbl&gt; NA
+## $ launch_angle                    &lt;dbl&gt; NA
+## $ effective_speed                 &lt;dbl&gt; 72.737
+## $ release_spin_rate               &lt;dbl&gt; 2214
+## $ release_extension               &lt;dbl&gt; 5.204
+## $ game_pk                         &lt;dbl&gt; 530556
+## $ pitcher_1                       &lt;dbl&gt; 543606
+## $ fielder_2                       &lt;dbl&gt; 641598
+## $ fielder_3                       &lt;dbl&gt; 489149
+## $ fielder_4                       &lt;dbl&gt; 572821
+## $ fielder_5                       &lt;dbl&gt; 500871
+## $ fielder_6                       &lt;dbl&gt; 600301
+## $ fielder_7                       &lt;dbl&gt; 592696
+## $ fielder_8                       &lt;dbl&gt; 534606
+## $ fielder_9                       &lt;dbl&gt; 596146
+## $ release_pos_y                   &lt;dbl&gt; 55.2958
+## $ estimated_ba_using_speedangle   &lt;dbl&gt; NA
+## $ estimated_woba_using_speedangle &lt;dbl&gt; NA
+## $ woba_value                      &lt;dbl&gt; 0
+## $ woba_denom                      &lt;dbl&gt; 1
+## $ babip_value                     &lt;dbl&gt; 0
+## $ iso_value                       &lt;dbl&gt; 0
+## $ launch_speed_angle              &lt;dbl&gt; NA
+## $ at_bat_number                   &lt;dbl&gt; 3
+## $ pitch_number                    &lt;dbl&gt; 8
+## $ pitch_name                      &lt;chr&gt; &quot;Curveball&quot;
+## $ home_score                      &lt;dbl&gt; 0
+## $ away_score                      &lt;dbl&gt; 0
+## $ bat_score                       &lt;dbl&gt; 0
+## $ fld_score                       &lt;dbl&gt; 0
+## $ post_away_score                 &lt;dbl&gt; 0
+## $ post_home_score                 &lt;dbl&gt; 0
+## $ post_bat_score                  &lt;dbl&gt; 0
+## $ post_fld_score                  &lt;dbl&gt; 0
+## $ if_fielding_alignment           &lt;chr&gt; &quot;Strategic&quot;
+## $ of_fielding_alignment           &lt;chr&gt; &quot;Standard&quot;</code></pre>
+<p>We have 83 columns of data on this one event. The granularity of information we get from statcast is overwhelming! Think of the things we can do with this.</p>
+<p>Anyway, that concludes the data gathering part of this exercise. Let’s move on to the wOBA calculation.</p>
+</div>
+<div id="run-expectancy-on-base-out-states" class="section level3">
+<h3>Run Expectancy on Base-Out States</h3>
+<p>Recall that the “w” in wOBA stands for weighted. The weights are according to how valuable each on-base event is with regards to runs. It aims to tell us how many runs we can expect from, say, a double. Generalizing is the key here. We don’t care about the double that Vladimir Guerrero Jr hit that scored 1 run, we care about <em>doubles in general</em>. How would we figure out the value of a double?</p>
+<p>This brings us to base-out states. The idea behind base-out states is that there is a limited (24 to be exact) combination of runners-on and outs in the inning. For example, you could have 0 outs and no one on. You could have 0 outs and a runner at 1st base. You could have 0 outs and a runner at second, and so on. For each of these 24 states, we can calculate the <strong>run expectancy</strong>, which is just the number of runs that were scored in innings that featured that base-out state. For example, for the base-out state of 1 out and a runner on 2nd, you can simply look at the number of innings in a season that had a runner on 2nd with 1 out and calculate how many runs were scored in those innings. Then you’d divide by the number of innings and you’d get your run expectancy. When this is done for all 24 base-out states, it’s called a Run Expectancy Matrix, or <code>RE</code>. To read more, as always, <a href="https://library.fangraphs.com/misc/re24/">check out Fangraphs.</a></p>
+<p>In R, a full base-outs run expectancy matrix would be calculated like so:</p>
+<pre class="r"><code>re24_matrix &lt;- events_2018 %&gt;% 
+  mutate_at(vars(on_1b:on_3b), ~ifelse(is.na(.), 0, 1)) %&gt;% 
+  group_by(game_pk, inning, inning_topbot) %&gt;% 
+  mutate(score_end_inning = max(bat_score)) %&gt;% 
+  mutate(runs_scored_inning = score_end_inning - bat_score) %&gt;% 
+  unite(&#39;on_base&#39;, on_1b:on_3b) %&gt;% 
+  mutate(outs_when_up = str_c(outs_when_up, &#39; outs&#39;)) %&gt;% 
+  group_by(on_base, outs_when_up) %&gt;% 
+  summarise(avg_runs_scored = sum(runs_scored_inning)/n()) %&gt;% 
+  spread(outs_when_up, avg_runs_scored, fill = 0)
+
+knitr::kable(re24_matrix, format = &#39;html&#39;, digits = 3, caption = &#39;Run Expectancy Matrix&#39; ) %&gt;% 
+  kableExtra::kable_styling(position = &quot;center&quot;)</code></pre>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<caption>
+<span id="tab:unnamed-chunk-6">Table 1: </span>Run Expectancy Matrix
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+on_base
+</th>
+<th style="text-align:right;">
+0 outs
+</th>
+<th style="text-align:right;">
+1 outs
+</th>
+<th style="text-align:right;">
+2 outs
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+0_0_0
+</td>
+<td style="text-align:right;">
+0.487
+</td>
+<td style="text-align:right;">
+0.261
+</td>
+<td style="text-align:right;">
+0.096
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+0_0_1
+</td>
+<td style="text-align:right;">
+1.394
+</td>
+<td style="text-align:right;">
+0.972
+</td>
+<td style="text-align:right;">
+0.335
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+0_1_0
+</td>
+<td style="text-align:right;">
+1.108
+</td>
+<td style="text-align:right;">
+0.654
+</td>
+<td style="text-align:right;">
+0.307
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+0_1_1
+</td>
+<td style="text-align:right;">
+1.855
+</td>
+<td style="text-align:right;">
+1.322
+</td>
+<td style="text-align:right;">
+0.527
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+1_0_0
+</td>
+<td style="text-align:right;">
+0.850
+</td>
+<td style="text-align:right;">
+0.518
+</td>
+<td style="text-align:right;">
+0.209
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+1_0_1
+</td>
+<td style="text-align:right;">
+1.745
+</td>
+<td style="text-align:right;">
+1.174
+</td>
+<td style="text-align:right;">
+0.462
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+1_1_0
+</td>
+<td style="text-align:right;">
+1.391
+</td>
+<td style="text-align:right;">
+0.905
+</td>
+<td style="text-align:right;">
+0.423
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+1_1_1
+</td>
+<td style="text-align:right;">
+2.315
+</td>
+<td style="text-align:right;">
+1.412
+</td>
+<td style="text-align:right;">
+0.710
+</td>
+</tr>
+</tbody>
+</table>
+<p>Let’s walk briefly through the code. First we use the <code>unite</code> function to bring together the <code>on_1b</code>, <code>on_2b</code>, and <code>on_3b</code> columns. This gives us our on base state for each event. Then we calculate the score at the end of the inning by grouping by game, inning, and top/bottom inning status and taking the maximum <code>bat_score</code>. From that, we can calculate how many runs were scored from the time of an event to the end of the inning. We get the number of outs in our data already. Finally, we group by the number of outs and the base state and calculate the average runs scored. Beyond that, it’s just data manipulation to put it into a matrix format.</p>
+<p>Comparing this to <a href="https://library.fangraphs.com/misc/re24/">Fangraph’s article</a>, which was written in 2014 so it’d probably be based on the 2013 season, you can see we’re very close. The numbers in the matrix will move year by year, as the game goes through cycles of offensive or pitching dominance. We’re in a pretty heavy offensive era right now, so many of the numbers in our matrix are higher. Note that you can calculate this by league and park, too, to reflect the dimensions of hitter friendly parks and the effect of the Designated Hitter. However, when you do that you lose some accuracy in your estimates as your sample size goes down. For this tutorial, we won’t be using the park and league adjusted <code>RE</code> matrices, but it’d be fairly easy to do so.</p>
+</div>
+<div id="re24" class="section level3">
+<h3>RE24</h3>
+<p>We can use our run expectancy matrix to calculate the value of an event, ultimately giving us the weights we need for wOBA. To do that is quite easy. We just look at the Run Expectancy of the current state when a batter is up, and then look at it after the at-bat is over. For example, say a batter is up with 0 outs and a runner on first. The Run Expectancy Matrix tells us that the expected number of runs is 0.85 for innings featuring that base-out state. Let’s imagine the batter hits a single, and the runner on 1st goes all the way to 3rd. The Run Expectancy Matrix shows 1.745 for that base-out state. Therefore, we can credit the batter with <span class="math inline">\((1.745 - 0.85) = 0.895\)</span> in added Run Expectancy for his single.</p>
+<p>Let’s imagine a slightly more complicated situation. Again, imagine there is a runner on 1st and no outs - we’re back in the 0.85 RE cell. Now let’s say the batter hits a home run. We’d be in the upper left cell of the RE matrix. The credit would be negative <span class="math inline">\((0.487 - 0.85) = -0.363\)</span>. Well that doesn’t make sense, right? To correct for that, we simply add the runs that were made in that event and end up with <span class="math inline">\(2 + (0.487 - 0.85) = 1.637\)</span>.</p>
+<p>The idea is that we can do this not just for the single and home run above, but for all singles and all home runs. If we take the average <code>RE24</code> for all singles, doubles, triples, home runs, walks, and hit-by-pitches, we can get to an average value for each of those events based on the expected number of runs generated. The value of doing this is going from the individual to the general. To illustrate why this is important, take a stat like RBIs. If you take an average player, and put him on a powerful offense and let him bat 3rd, his RBIs will surely go up. Does that mean he got better? No, he just got put in more situations where his hits could drive in more runs. This methodology corrects for that and treats all singles with the same value.</p>
+</div>
+<div id="linear-weights" class="section level3">
+<h3>Linear Weights</h3>
+<p>Let’s use the concept of <code>RE24</code> to calculate the value in expected runs for the various offensive events. The first thing we’ll do, just to make working with the data easier, is convert our Run Expectancy matrix into tidy format.</p>
+<pre class="r"><code>tidy_re24 &lt;- re24_matrix %&gt;% 
+  gather(outs_when_up, runs_expected, -on_base) %&gt;% 
+  mutate(outs_when_up = as.double(str_extract(outs_when_up, &#39;\\d&#39;)))</code></pre>
+<p>Next, we’ll just take each at-bat in the 2018 season, find the run expectancy of that base-out state, and then look at the run expectancy after the at-bat is done, adding in any additional runs created.</p>
+<pre class="r"><code>delta_game_states &lt;- events_2018 %&gt;% 
+  mutate_at(vars(on_1b:on_3b), ~ifelse(is.na(.), 0, 1)) %&gt;% 
+  unite(&#39;on_base&#39;, on_1b:on_3b) %&gt;% 
+  group_by(game_pk, inning, inning_topbot) %&gt;% 
+  arrange(at_bat_number) %&gt;% 
+  mutate(
+    next_on_base = lead(on_base),
+    next_on_base = ifelse(is.na(next_on_base), &#39;0_0_0&#39;, next_on_base),
+    next_outs = lead(outs_when_up),
+    next_outs = ifelse(is.na(next_outs), 3, next_outs),
+    next_bat_score = lead(bat_score),
+    next_bat_score = ifelse(is.na(next_bat_score), bat_score, next_bat_score),
+    runs_scored = next_bat_score - bat_score
+  ) %&gt;% 
+  ungroup()
+
+game_states_re &lt;- delta_game_states %&gt;% 
+  left_join(tidy_re24, by = c(&quot;on_base&quot;, &quot;outs_when_up&quot;)) %&gt;% 
+  rename(pre_runs_expected = runs_expected) %&gt;% 
+  left_join(tidy_re24, by = c(&#39;next_on_base&#39; = &#39;on_base&#39;, &#39;next_outs&#39; = &#39;outs_when_up&#39;)) %&gt;% 
+  rename(post_runs_expected = runs_expected) %&gt;% 
+  mutate(post_runs_expected = ifelse(is.na(post_runs_expected), 0, post_runs_expected)) %&gt;% 
+  mutate(re24 = post_runs_expected - pre_runs_expected + runs_scored)</code></pre>
+<p>Some things to point on about the code above:</p>
+<ul>
+<li>I am sorting each inning by at bat. I’m taking the base-out situation at the time of at-bat, and using the <code>lead()</code> function to find the next base-out situation after the at-bat.</li>
+<li>Any at bat that ends an inning will result in a <code>post_runs_expected</code> of 0.</li>
+<li>Any runs resulted in the at-bat are added on</li>
+</ul>
+<p>Finally, we can calculate the average run expectancy for singles, doubles, etc. For our purposes, we’ll group all events that lead to outs as one event.</p>
+<pre class="r"><code>simplify_events &lt;- function(events) {
+  ifelse(events %in% c(&#39;walk&#39;, &#39;single&#39;, &#39;double&#39;, &#39;triple&#39;, &#39;home_run&#39;, &#39;hit_by_pitch&#39;), events, &#39;out&#39;)
+}
+
+avg_re24_event &lt;- game_states_re %&gt;% 
+  mutate(events = simplify_events(events)) %&gt;% 
+  group_by(events) %&gt;% 
+  summarise(re24 = mean(re24), count = n())
+
+avg_re24_event %&gt;% arrange(re24) %&gt;% 
+  knitr::kable(format = &quot;html&quot;, caption = &quot;Run Expectancy for Offensive Events&quot;, digits = 3) %&gt;% 
+  kableExtra::kable_styling(position = &quot;center&quot;)</code></pre>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<caption>
+<span id="tab:unnamed-chunk-9">Table 2: </span>Run Expectancy for Offensive Events
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+events
+</th>
+<th style="text-align:right;">
+re24
+</th>
+<th style="text-align:right;">
+count
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:right;">
+-0.248
+</td>
+<td style="text-align:right;">
+125362
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+walk
+</td>
+<td style="text-align:right;">
+0.305
+</td>
+<td style="text-align:right;">
+14554
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+hit_by_pitch
+</td>
+<td style="text-align:right;">
+0.328
+</td>
+<td style="text-align:right;">
+1899
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+single
+</td>
+<td style="text-align:right;">
+0.437
+</td>
+<td style="text-align:right;">
+26018
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+double
+</td>
+<td style="text-align:right;">
+0.754
+</td>
+<td style="text-align:right;">
+8140
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+triple
+</td>
+<td style="text-align:right;">
+1.096
+</td>
+<td style="text-align:right;">
+835
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+home_run
+</td>
+<td style="text-align:right;">
+1.350
+</td>
+<td style="text-align:right;">
+5525
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="scaling" class="section level3">
+<h3>Scaling</h3>
+<p>Now that we’ve got our Run Expectancy numbers, we can finally put our wOBA statistic together. There’s two more things we need to do. Remember above I mentioned that wOBA is scaled to look similar to On Base Percentage (OBP), just so people don’t have to hold two different scales in their heads. That’s the final step here.</p>
+<p>Because an out in OBP is 0, we’d like to scale our metric such that an out is also 0. That means we need to take our run expectancy for an out, which is -0.248, and add 0.248 to it and all our other events. We’ll call this the out-adjusted run expectancy. Next, we want to average all these together, see what they come out as, and adjust it so that the average wOBA is the same as the average OBP (which was 0.318<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a>). This adjustment factor is called the wOBA scale.</p>
+<pre class="r"><code>out_value &lt;- avg_re24_event %&gt;% 
+  filter(events == &#39;out&#39;) %&gt;% 
+  pull(re24)
+
+out_adjusted &lt;- avg_re24_event %&gt;% 
+  mutate(out_adjusted = re24 - out_value)
+
+obp_mean &lt;- 0.318
+
+run_expectancy_mean &lt;- weighted.mean(out_adjusted$out_adjusted, w = out_adjusted$count)
+
+wOBA_scale &lt;- obp_mean / run_expectancy_mean
+
+wOBA &lt;- out_adjusted %&gt;% 
+  mutate(obp_scaled = out_adjusted * wOBA_scale) 
+wOBA %&gt;% 
+  select(-count) %&gt;% 
+  arrange(re24) %&gt;% 
+  knitr::kable(format = &quot;html&quot;, caption = &quot;Adjusted wOBA&quot;, digits = 3) %&gt;% 
+  kableExtra::kable_styling(position = &quot;center&quot;)</code></pre>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<caption>
+<span id="tab:unnamed-chunk-10">Table 3: </span>Adjusted wOBA
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+events
+</th>
+<th style="text-align:right;">
+re24
+</th>
+<th style="text-align:right;">
+out_adjusted
+</th>
+<th style="text-align:right;">
+obp_scaled
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+out
+</td>
+<td style="text-align:right;">
+-0.248
+</td>
+<td style="text-align:right;">
+0.000
+</td>
+<td style="text-align:right;">
+0.000
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+walk
+</td>
+<td style="text-align:right;">
+0.305
+</td>
+<td style="text-align:right;">
+0.553
+</td>
+<td style="text-align:right;">
+0.711
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+hit_by_pitch
+</td>
+<td style="text-align:right;">
+0.328
+</td>
+<td style="text-align:right;">
+0.576
+</td>
+<td style="text-align:right;">
+0.741
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+single
+</td>
+<td style="text-align:right;">
+0.437
+</td>
+<td style="text-align:right;">
+0.685
+</td>
+<td style="text-align:right;">
+0.882
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+double
+</td>
+<td style="text-align:right;">
+0.754
+</td>
+<td style="text-align:right;">
+1.002
+</td>
+<td style="text-align:right;">
+1.289
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+triple
+</td>
+<td style="text-align:right;">
+1.096
+</td>
+<td style="text-align:right;">
+1.344
+</td>
+<td style="text-align:right;">
+1.729
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+home_run
+</td>
+<td style="text-align:right;">
+1.350
+</td>
+<td style="text-align:right;">
+1.598
+</td>
+<td style="text-align:right;">
+2.056
+</td>
+</tr>
+</tbody>
+</table>
+<p>Let’s compare this to the 2013 weights we saw in the beginning of the article:</p>
+<div class="figure">
+<img src="img/fangraphs_woba.png" alt="Again, courtesy of Fangraphs" />
+<p class="caption">Again, courtesy of Fangraphs</p>
+</div>
+<p>The values are quite close. Everything except for Home Runs and Triples, which are relatively rare, are within 0.02. We can check Fangraphs values for 2018 with our data by comparing it to the numbers <a href="https://www.fangraphs.com/guts.aspx?type=cn">here</a>. Again, it’s very close. The reason why the weights aren’t exactly the same may come down to either park and league adjusted run expectancy matrices, or edge cases<a href="#fn2" class="footnote-ref" id="fnref2"><sup>2</sup></a>.</p>
+</div>
+</div>
+<div id="from-woba-to-wraa" class="section level2">
+<h2>From wOBA to wRAA</h2>
+<p>Now with our wOBA data, we should be able to easily convert back to wRAA. Recall from above the formula:</p>
+<p><span class="math display">\[ wRAA = ((wOBA – lgwOBA)/wOBA Scale) * PA \]</span></p>
+<p>In this formula, <span class="math inline">\(wOBA\)</span> is actually a batter’s specific <span class="math inline">\(wOBA\)</span> and the league is the weighted average of the obp_scaled numbers we calculated above. The <span class="math inline">\(wOBAScale\)</span> came out to 1.286 and PA is just the number of Plate Appearances for the batter. With this, let’s arrive at <span class="math inline">\(wRAA\)</span> for all players in 2018.</p>
+<pre class="r"><code>lgwOBA &lt;- weighted.mean(wOBA$obp_scaled, wOBA$count)
+
+player_wOBA &lt;- game_states_re %&gt;% 
+  mutate(events = simplify_events(events)) %&gt;% 
+  inner_join(wOBA %&gt;% select(events, obp_scaled)) %&gt;% 
+  group_by(player_name) %&gt;% 
+  summarise(wOBA = sum(obp_scaled)/n(), PA = n())</code></pre>
+<pre><code>## Joining, by = &quot;events&quot;</code></pre>
+<pre class="r"><code>player_wRAA &lt;- player_wOBA %&gt;% 
+  mutate(wRAA = ((wOBA - lgwOBA)/wOBA_scale)*PA)</code></pre>
+<p>Let’s see now if the batters with the highest wRAA in 2018 were some of the usual suspects.</p>
+<pre class="r"><code>player_wRAA %&gt;% 
+  arrange(desc(wRAA)) %&gt;% 
+  head(5) %&gt;% 
+  knitr::kable(format = &#39;html&#39;, digits = 3, caption = &#39;wRAA Leaderboard 2018&#39;) %&gt;% 
+  kableExtra::kable_styling(position = &quot;center&quot;)</code></pre>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+<caption>
+<span id="tab:unnamed-chunk-12">Table 4: </span>wRAA Leaderboard 2018
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+player_name
+</th>
+<th style="text-align:right;">
+wOBA
+</th>
+<th style="text-align:right;">
+PA
+</th>
+<th style="text-align:right;">
+wRAA
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Mookie Betts
+</td>
+<td style="text-align:right;">
+0.458
+</td>
+<td style="text-align:right;">
+601
+</td>
+<td style="text-align:right;">
+65.330
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Mike Trout
+</td>
+<td style="text-align:right;">
+0.457
+</td>
+<td style="text-align:right;">
+568
+</td>
+<td style="text-align:right;">
+61.235
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+J.D. Martinez
+</td>
+<td style="text-align:right;">
+0.435
+</td>
+<td style="text-align:right;">
+638
+</td>
+<td style="text-align:right;">
+57.939
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Christian Yelich
+</td>
+<td style="text-align:right;">
+0.431
+</td>
+<td style="text-align:right;">
+644
+</td>
+<td style="text-align:right;">
+56.522
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Alex Bregman
+</td>
+<td style="text-align:right;">
+0.410
+</td>
+<td style="text-align:right;">
+700
+</td>
+<td style="text-align:right;">
+50.299
+</td>
+</tr>
+</tbody>
+</table>
+<p>The number one player was Mookie Betts, who happened to also win MVP<a href="#fn3" class="footnote-ref" id="fnref3"><sup>3</sup></a> that year for the Championship winning Boston Red Sox. And next up is a man who needs no introduction.</p>
+</div>
+<div id="conclusions" class="section level2">
+<h2>Conclusions</h2>
+<p>We’ve gone on a long and reproducible route to end up at a metric that tells us how to calculate the number of runs a batter contributed above average. This is a big component of WAR - the other ones are defense and base running related and are much smaller. So we’ve already done most of the work. In future essays we’ll go through the defensive and base running calculations.</p>
+</div>
+<div class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p><a href="https://www.baseball-reference.com/leagues/MLB/bat.shtml" class="uri">https://www.baseball-reference.com/leagues/MLB/bat.shtml</a><a href="#fnref1" class="footnote-back">↩</a></p></li>
+<li id="fn2"><p>for example, my method will penalize batters whose at-bats end innings on runners getting caught stealing - something I’m sure that more mature methodologies account for properly<a href="#fnref2" class="footnote-back">↩</a></p></li>
+<li id="fn3"><p><a href="http://www.espn.com/mlb/history/awards/_/id/16" class="uri">http://www.espn.com/mlb/history/awards/_/id/16</a><a href="#fnref3" class="footnote-back">↩</a></p></li>
+</ol>
+</div>

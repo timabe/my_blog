@@ -1,0 +1,309 @@
+---
+title: 'Calculating WAR from Scratch: Part 2 - Batting Runs'
+author: tim abraham
+date: '2019-09-02'
+slug: batting-runs
+categories: []
+tags:
+  - war
+  - baseball
+comments: no
+showcomments: yes
+showpagemeta: yes
+---
+
+In our [journey of calculating WAR](https://www.timabe.me/blog/caculating-war), we will start with Batting Runs. According to FanGraphs:
+
+> To calculate Batting Runs, you want [Weighted Runs Above Average (wRAA)](https://library.fangraphs.com/offense/wraa/)
+
+Weighted Runs Above Average calculates how many runs a player created compared to the average player, and is adjusted by league and park. 
+
+$$ wRAA = ((wOBA – lgwOBA)/wOBA Scale) * PA $$ 
+
+You can already see that calculating WAR is going to be a slog. We're only on the first component, Batting Runs, and we can already see that it's turtles all the way down. 
+
+Let's talk about what these things mean:
+
+* wOBA: Weighted On Base Average. This is going to be the meat of the post.
+* lgwOBA: League wOBA. Simply the wOBA for the league
+* wOBA Scale: We'll see below that wOBA is scaled to look similar to On Base Percentage (OBP). This is a convenience scalar for people who are already familiar with what a good OBP looks like. But here to get wRAA, we need to un-scale it.
+* PA: Plate appearances.
+
+## Weighted On Base Average - wOBA
+
+The principle behind wOBA is that not all outcomes leading to a batter getting on base are created equal. We should weigh them according to their value. Makes sense, right? But how to define value? Here value is defined by **run expectancy** based on base-out states. Again, I'm heavily paraphrasing a [FanGraphs article here](https://library.fangraphs.com/offense/woba/), and if you want to read about these stats they do a much better job. I want to introduce just enough context here such that the actual calculations have some intuition behind them.
+
+Below is an image from Fangraphs, showing the weights for the 2013 season. 0.69 for a walk. 2.10 for a home run. Where do these weights come from? I'll be showing a reproducible example below, so please read on!
+
+![Courtesy of Fangraphs](img/fangraphs_woba.png)
+
+### Getting the data from Baseball Savant
+
+This could really be its own blog post. However, I want to focus more on the calculation and less on the data scraping, so I'll breeze through this part.
+
+To calculate wOBA, we need data that tells us the situational context for each event that happened in the course of a season of Major League Baseball. By situational, I mean for each play we have to know how many outs there were and whether there were any runners on any of the bases. This is what we call **base-out states**.
+
+Since WAR is based on full seasons, we'll need to pull this info for a full season. In this example, I'll use the 2018 season.
+
+[Baseball Savant](https://baseballsavant.mlb.com/) allows you to pass a parametrized URL and get back a csv of statcast data. To avoid sending a request for a large amount of data, I've written a function, `stat_cast_urls()` that allows you to pass a year in as an argument and get a list of URLs back, each of which span one week. This allows you to break the request into smaller weekly chunks.
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+
+stat_cast_urls <- function(year, params) {
+  
+  start_season <- lubridate::make_date(year = year, month = 4, day = 1)
+  end_season <- lubridate::make_date(year = year, month = 10, day = 7)
+  
+  season_dates <- seq.Date(start_season, end_season, by = 'day')
+  
+  start_indices <- seq(from = 1, to = length(season_dates), by = 7)
+  end_indices <- seq(from = 7, to = length(season_dates) + 7, by = 7)
+  
+  start_dates <- as.character(season_dates[start_indices])
+  end_dates <- as.character(season_dates[end_indices])
+  s_year <- str_c(year, '|')
+  add_url_params <- function(start, end) {
+    list(
+      c("&all=", "true")
+      , c("&group_by=", "name")
+      , c("&hfSea=", s_year)
+      , c("&game_date_gt=", start)
+      , c("&game_date_lt=", end)
+      , c("&player_type=", "batter")
+      , c("&type=", "details")
+    )
+  }
+  urlparams <- map2(start_dates, end_dates, add_url_params)
+  
+  all_params <- urlparams %>% map(unlist) %>% map(reduce, str_c)
+  
+  base_url <- 'https://baseballsavant.mlb.com/statcast_search/csv?'
+  
+  str_c(base_url, all_params)
+}
+
+```
+
+Next, you'll want to read the csv data from these URLs. I noticed that the `read_csv()` function in R can have trouble guessing the right column data types, so I explicitly provide them in this [gist](https://gist.github.com/timabe/9c0c526cb921c6117f575b213ed918a8).
+
+```{r, eval=F}
+# read in proper column data types
+devtools::source_gist('https://gist.github.com/timabe/9c0c526cb921c6117f575b213ed918a8')
+# read in the data to a list. This will take a few minutes as it's a lot of data.
+s_2018 <- stat_cast_urls(2018) %>%
+  map(safely(read_csv), na = 'null', col_types = statcast_cols)
+
+# pull out the results 
+results_2018 <- s_2018 %>% 
+  map('result')
+
+# the last list is empty, so remove it
+results_2018 <- results_2018[-28]
+
+# remove deprecated columns and do renaming 
+format_data <- function(df) {
+  df %>% 
+    select(-fielder_2) %>% 
+    rename(fielder_2=fielder_2_1) %>% 
+    select(-ends_with('deprecated'))
+}
+df_2018 <- results_2018 %>%
+  map(format_data) %>% 
+  bind_rows()
+```
+
+Now we've got a very large data frame called `df_2018`. This is actually more than we need, but that's okay. In addition to all the play-by-play situational data from the 2018 season, we also get the pitch-by-pitch data. This may come in handy later. For now, if we just want the play-by-play data, we'll filter for records with an non-null `events`.
+
+```{r include=FALSE}
+load('~/R/WAR/statcast/full_2018_season.RData')
+```
+
+
+```{r}
+events_2018 <- df_2018 %>% 
+  filter(!is.na(events))
+```
+
+Let's have a look at a random record here, just to build some intuition around what we're working with.
+
+```{r}
+set.seed(444)
+events_2018 %>% 
+  sample_n(1) %>% 
+  glimpse()
+```
+
+We have 83 columns of data on this one event. The granularity of information we get from statcast is overwhelming! Think of the things we can do with this. 
+
+Anyway, that concludes the data gathering part of this exercise. Let's move on to the wOBA calculation. 
+
+### Run Expectancy on Base-Out States
+
+Recall that the "w" in wOBA stands for weighted. The weights are according to how valuable each on-base event is with regards to runs. It aims to tell us how many runs we can expect from, say, a double. Generalizing is the key here. We don't care about the double that Vladimir Guerrero Jr hit that scored 1 run, we care about *doubles in general*. How would we figure out the value of a double? 
+
+This brings us to base-out states. The idea behind base-out states is that there is a limited (24 to be exact) combination of runners-on and outs in the inning. For example, you could have 0 outs and no one on. You could have 0 outs and a runner at 1st base. You could have 0 outs and a runner at second, and so on. For each of these 24 states, we can calculate the **run expectancy**, which is just the number of runs that were scored in innings that featured that base-out state. For example, for the base-out state of 1 out and a runner on 2nd, you can simply look at the number of innings in a season that had a runner on 2nd with 1 out and calculate how many runs were scored in those innings. Then you'd divide by the number of innings and you'd get your run expectancy. When this is done for all 24 base-out states, it's called a Run Expectancy Matrix, or `RE`. To read more, as always, [check out Fangraphs.](https://library.fangraphs.com/misc/re24/)
+
+In R, a full base-outs run expectancy matrix would be calculated like so:
+
+```{r, cache.lazy=TRUE}
+re24_matrix <- events_2018 %>% 
+  mutate_at(vars(on_1b:on_3b), ~ifelse(is.na(.), 0, 1)) %>% 
+  group_by(game_pk, inning, inning_topbot) %>% 
+  mutate(score_end_inning = max(bat_score)) %>% 
+  mutate(runs_scored_inning = score_end_inning - bat_score) %>% 
+  unite('on_base', on_1b:on_3b) %>% 
+  mutate(outs_when_up = str_c(outs_when_up, ' outs')) %>% 
+  group_by(on_base, outs_when_up) %>% 
+  summarise(avg_runs_scored = sum(runs_scored_inning)/n()) %>% 
+  spread(outs_when_up, avg_runs_scored, fill = 0)
+
+knitr::kable(re24_matrix, format = 'html', digits = 3, caption = 'Run Expectancy Matrix' ) %>% 
+  kableExtra::kable_styling(position = "center")
+```
+
+Let's walk briefly through the code. First we use the `unite` function to bring together the `on_1b`, `on_2b`, and `on_3b` columns. This gives us our on base state for each event. Then we calculate the score at the end of the inning by grouping by game, inning, and top/bottom inning status and taking the maximum `bat_score`. From that, we can calculate how many runs were scored from the time of an event to the end of the inning. We get the number of outs in our data already. Finally, we group by the number of outs and the base state and calculate the average runs scored. Beyond that, it's just data manipulation to put it into a matrix format. 
+
+Comparing this to [Fangraph's article](https://library.fangraphs.com/misc/re24/), which was written in 2014 so it'd probably be based on the 2013 season, you can see we're very close. The numbers in the matrix will move year by year, as the game goes through cycles of offensive or pitching dominance. We're in a pretty heavy offensive era right now, so many of the numbers in our matrix are higher. Note that you can calculate this by league and park, too, to reflect the dimensions of hitter friendly parks and the effect of the Designated Hitter. However, when you do that you lose some accuracy in your estimates as your sample size goes down. For this tutorial, we won't be using the park and league adjusted `RE` matrices, but it'd be fairly easy to do so.
+
+### RE24
+
+We can use our run expectancy matrix to calculate the value of an event, ultimately giving us the weights we need for wOBA. To do that is quite easy. We just look at the Run Expectancy of the current state when a batter is up, and then look at it after the at-bat is over. For example, say a batter is up with 0 outs and a runner on first. The Run Expectancy Matrix tells us that the expected number of runs is 0.85 for innings featuring that base-out state. Let's imagine the batter hits a single, and the runner on 1st goes all the way to 3rd. The Run Expectancy Matrix shows 1.745 for that base-out state. Therefore, we can credit the batter with $(1.745 - 0.85) = 0.895$ in added Run Expectancy for his single. 
+
+Let's imagine a slightly more complicated situation. Again, imagine there is a runner on 1st and no outs - we're back in the 0.85 RE cell. Now let's say the batter hits a home run. We'd be in the upper left cell of the RE matrix. The credit would be negative $(0.487 - 0.85) = -0.363$. Well that doesn't make sense, right? To correct for that, we simply add the runs that were made in that event and end up with  $2 + (0.487 - 0.85) = 1.637$. 
+
+The idea is that we can do this not just for the single and home run above, but for all singles and all home runs. If we take the average `RE24` for all singles, doubles, triples, home runs, walks, and hit-by-pitches, we can get to an average value for each of those events based on the expected number of runs generated. The value of doing this is going from the individual to the general. To illustrate why this is important, take a stat like RBIs. If you take an average player, and put him on a powerful offense and let him bat 3rd, his RBIs will surely go up. Does that mean he got better? No, he just got put in more situations where his hits could drive in more runs. This methodology corrects for that and treats all singles with the same value. 
+
+### Linear Weights 
+
+Let's use the concept of `RE24` to calculate the value in expected runs for the various offensive events. The first thing we'll do, just to make working with the data easier, is convert our Run Expectancy matrix into tidy format.
+
+```{r}
+tidy_re24 <- re24_matrix %>% 
+  gather(outs_when_up, runs_expected, -on_base) %>% 
+  mutate(outs_when_up = as.double(str_extract(outs_when_up, '\\d')))
+```
+
+Next, we'll just take each at-bat in the 2018 season, find the run expectancy of that base-out state, and then look at the run expectancy after the at-bat is done, adding in any additional runs created.
+```{r}
+delta_game_states <- events_2018 %>% 
+  mutate_at(vars(on_1b:on_3b), ~ifelse(is.na(.), 0, 1)) %>% 
+  unite('on_base', on_1b:on_3b) %>% 
+  group_by(game_pk, inning, inning_topbot) %>% 
+  arrange(at_bat_number) %>% 
+  mutate(
+    next_on_base = lead(on_base),
+    next_on_base = ifelse(is.na(next_on_base), '0_0_0', next_on_base),
+    next_outs = lead(outs_when_up),
+    next_outs = ifelse(is.na(next_outs), 3, next_outs),
+    next_bat_score = lead(bat_score),
+    next_bat_score = ifelse(is.na(next_bat_score), bat_score, next_bat_score),
+    runs_scored = next_bat_score - bat_score
+  ) %>% 
+  ungroup()
+
+game_states_re <- delta_game_states %>% 
+  left_join(tidy_re24, by = c("on_base", "outs_when_up")) %>% 
+  rename(pre_runs_expected = runs_expected) %>% 
+  left_join(tidy_re24, by = c('next_on_base' = 'on_base', 'next_outs' = 'outs_when_up')) %>% 
+  rename(post_runs_expected = runs_expected) %>% 
+  mutate(post_runs_expected = ifelse(is.na(post_runs_expected), 0, post_runs_expected)) %>% 
+  mutate(re24 = post_runs_expected - pre_runs_expected + runs_scored)
+```
+
+Some things to point on about the code above:
+
+* I am sorting each inning by at bat. I'm taking the base-out situation at the time of at-bat, and using the `lead()` function to find the next base-out situation after the at-bat.
+* Any at bat that ends an inning will result in a `post_runs_expected` of 0. 
+* Any runs resulted in the at-bat are added on
+
+Finally, we can calculate the average run expectancy for singles, doubles, etc. For our purposes, we'll group all events that lead to outs as one event.
+
+```{r}
+simplify_events <- function(events) {
+  ifelse(events %in% c('walk', 'single', 'double', 'triple', 'home_run', 'hit_by_pitch'), events, 'out')
+}
+
+avg_re24_event <- game_states_re %>% 
+  mutate(events = simplify_events(events)) %>% 
+  group_by(events) %>% 
+  summarise(re24 = mean(re24), count = n())
+
+avg_re24_event %>% arrange(re24) %>% 
+  knitr::kable(format = "html", caption = "Run Expectancy for Offensive Events", digits = 3) %>% 
+  kableExtra::kable_styling(position = "center")
+```
+
+### Scaling
+
+Now that we've got our Run Expectancy numbers, we can finally put our wOBA statistic together. There's two more things we need to do. Remember above I mentioned that wOBA is scaled to look similar to On Base Percentage (OBP), just so people don't have to hold two different scales in their heads. That's the final step here.
+
+Because an out in OBP is 0, we'd like to scale our metric such that an out is also 0. That means we need to take our run expectancy for an out, which is -0.248, and add 0.248 to it and all our other events. We'll call this the out-adjusted run expectancy. Next, we want to average all these together, see what they come out as, and adjust it so that the average wOBA is the same as the average OBP (which was 0.318^[https://www.baseball-reference.com/leagues/MLB/bat.shtml]). This adjustment factor is called the wOBA scale.
+
+```{r}
+out_value <- avg_re24_event %>% 
+  filter(events == 'out') %>% 
+  pull(re24)
+
+out_adjusted <- avg_re24_event %>% 
+  mutate(out_adjusted = re24 - out_value)
+
+obp_mean <- 0.318
+
+run_expectancy_mean <- weighted.mean(out_adjusted$out_adjusted, w = out_adjusted$count)
+
+wOBA_scale <- obp_mean / run_expectancy_mean
+
+wOBA <- out_adjusted %>% 
+  mutate(obp_scaled = out_adjusted * wOBA_scale) 
+wOBA %>% 
+  select(-count) %>% 
+  arrange(re24) %>% 
+  knitr::kable(format = "html", caption = "Adjusted wOBA", digits = 3) %>% 
+  kableExtra::kable_styling(position = "center")
+  
+```
+
+Let's compare this to the 2013 weights we saw in the beginning of the article:
+
+![Again, courtesy of Fangraphs](img/fangraphs_woba.png)
+
+The values are quite close. Everything except for Home Runs and Triples, which are relatively rare, are within 0.02. We can check Fangraphs values for 2018 with our data by comparing it to the numbers [here](https://www.fangraphs.com/guts.aspx?type=cn). Again, it's very close. The reason why the weights aren't exactly the same may come down to either park and league adjusted run expectancy matrices, or edge cases^[for example, my method will penalize batters whose at-bats end innings on runners getting caught stealing - something I'm sure that more mature methodologies account for properly].
+
+## From wOBA to wRAA
+
+Now with our wOBA data, we should be able to easily convert back to wRAA. Recall from above the formula:
+
+$$ wRAA = ((wOBA – lgwOBA)/wOBA Scale) * PA $$ 
+
+In this formula, $wOBA$ is actually a batter's specific $wOBA$ and the league is the weighted average of the obp_scaled numbers we calculated above. The $wOBAScale$ came out to 1.286 and PA is just the number of Plate Appearances for the batter. With this, let's arrive at $wRAA$ for all players in 2018.
+
+```{r}
+lgwOBA <- weighted.mean(wOBA$obp_scaled, wOBA$count)
+
+player_wOBA <- game_states_re %>% 
+  mutate(events = simplify_events(events)) %>% 
+  inner_join(wOBA %>% select(events, obp_scaled)) %>% 
+  group_by(player_name) %>% 
+  summarise(wOBA = sum(obp_scaled)/n(), PA = n())
+
+player_wRAA <- player_wOBA %>% 
+  mutate(wRAA = ((wOBA - lgwOBA)/wOBA_scale)*PA)
+```
+
+Let's see now if the batters with the highest wRAA in 2018 were some of the usual suspects.
+
+```{r}
+player_wRAA %>% 
+  arrange(desc(wRAA)) %>% 
+  head(5) %>% 
+  knitr::kable(format = 'html', digits = 3, caption = 'wRAA Leaderboard 2018') %>% 
+  kableExtra::kable_styling(position = "center")
+```
+
+The number one player was Mookie Betts, who happened to also win MVP^[http://www.espn.com/mlb/history/awards/_/id/16] that year for the Championship winning Boston Red Sox. And next up is a man who needs no introduction. 
+
+## Conclusions
+
+We've gone on a long and reproducible route to end up at a metric that tells us how to calculate the number of runs a batter contributed above average. This is a big component of WAR - the other ones are defense and base running related and are much smaller. So we've already done most of the work. In future essays we'll go through the defensive and base running calculations. 
+
