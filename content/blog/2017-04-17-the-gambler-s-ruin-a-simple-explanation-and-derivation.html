@@ -26,7 +26,8 @@ description: A full walk through of a tricky but fun math problem
 </div>
 <div id="initial-conditions" class="section level3">
 <h3>Initial conditions</h3>
-<p>Two initial conditions can help us solve the problem. <span class="math display">\[P_0=1\]</span> This says that when Player A has $0, he is ruined. When Player A runs out of money, he can no longer play the game, so he’s stuck in this state. His probability of ruin is therefore 1, since he has no chance of getting back in the action. <span class="math display">\[P_{a+b}=0\]</span> This says the opposite. If Player A has won both his $a and Player B’s $b, he has won all the dollars. Player B can no longer play, so the game is over and Player A has no chance of being ruined.</p>
+<p>Two initial conditions can help us solve the problem. <span class="math display">\[P_0=1\]</span>
+This says that when Player A has $0, he is ruined. When Player A runs out of money, he can no longer play the game, so he’s stuck in this state. His probability of ruin is therefore 1, since he has no chance of getting back in the action. <span class="math display">\[P_{a+b}=0\]</span> This says the opposite. If Player A has won both his $a and Player B’s $b, he has won all the dollars. Player B can no longer play, so the game is over and Player A has no chance of being ruined.</p>
 </div>
 <div id="solving-a-difference-equation." class="section level3">
 <h3>Solving a difference equation.</h3>
@@ -40,16 +41,21 @@ description: A full walk through of a tricky but fun math problem
 <li><span class="math display">\[P_{n+1}-P_n=\frac{q}{p}(P_n-P_{n-1})=(\frac{q}{p})^n(P_1-1)\]</span></li>
 </ol>
 <p>Huh? How’d we get there? Let me show you. Let’s try plugging in some numbers. First let’s say <span class="math inline">\(n=1\)</span>. Plug that into (3)</p>
-<p><span class="math display">\[P_2-P_1=\frac{q}{p}(P_1-P_0)\]</span> But we know from our initial conditions that <span class="math inline">\(P_0=1\)</span>, so: <span class="math display">\[P_2-P_1=\frac{q}{p}(P_1-1)\]</span></p>
-<p>Great, now let’s try for <span class="math inline">\(n=2\)</span>. Plugged into (3) gives <span class="math display">\[P_3-P_2=\frac{q}{p}(P_2-P1)\]</span></p>
-<p>You can see a pattern emerging here. But you can also see that the <span class="math inline">\((P_2-P_1)\)</span> in the above equation was already solved for in the <span class="math inline">\(n=1\)</span> scenario. So we can simply plug that in. <span class="math display">\[P_3-P_2=\frac{q}{p}\frac{q}{p}(P_1-1)=(\frac{q}{p})^2(P_1-1)\]</span></p>
+<p><span class="math display">\[P_2-P_1=\frac{q}{p}(P_1-P_0)\]</span>
+But we know from our initial conditions that <span class="math inline">\(P_0=1\)</span>, so:
+<span class="math display">\[P_2-P_1=\frac{q}{p}(P_1-1)\]</span></p>
+<p>Great, now let’s try for <span class="math inline">\(n=2\)</span>. Plugged into (3) gives
+<span class="math display">\[P_3-P_2=\frac{q}{p}(P_2-P1)\]</span></p>
+<p>You can see a pattern emerging here. But you can also see that the <span class="math inline">\((P_2-P_1)\)</span> in the above equation was already solved for in the <span class="math inline">\(n=1\)</span> scenario. So we can simply plug that in.
+<span class="math display">\[P_3-P_2=\frac{q}{p}\frac{q}{p}(P_1-1)=(\frac{q}{p})^2(P_1-1)\]</span></p>
 <p>Now consider the general case with <span class="math inline">\(n\)</span>. Feel free to try with <span class="math inline">\(n=3\)</span> if you haven’t gotten the pattern. If you keep iterating, you’ll continue to wind up with something that equals <span class="math inline">\((\frac{q}{p})^n(P_1-1)\)</span>.</p>
 </div>
 <div id="fun-with-geometric-sequences" class="section level3">
 <h3>Fun with Geometric Sequences</h3>
 <p>Let’s take another route now. We’ve simplified <span class="math inline">\(P_{n+1}-P_n\)</span>, but what about when we’re not just looking at a difference of 1 game? Let’s exploit our other initial condition of <span class="math inline">\(P_{a+b}=1\)</span> and solve for <span class="math inline">\(P_{a+b}-P_n\)</span>. Again, let’s plug in some numbers. Let’s say <span class="math inline">\(n=1\)</span> and <span class="math inline">\(a+b=3\)</span>. Now we have <span class="math inline">\(P_3-P_1\)</span>. From the work we did above we know <span class="math inline">\(P_3-P_2\)</span> and <span class="math inline">\(P_2-P_1\)</span>, and adding those together gives us <span class="math inline">\(P_3-P_1\)</span>. We could also write that as</p>
 <p><span class="math display">\[P_3-P_1=\sum\limits_{k=1}^{2}P_{k+1}-P_k\]</span></p>
-<p>Or more generally <span class="math display">\[P_{a+b}-P_{n}=\sum\limits_{k=n}^{a+b-1}P_{k+1}-P_k\]</span>.</p>
+<p>Or more generally
+<span class="math display">\[P_{a+b}-P_{n}=\sum\limits_{k=n}^{a+b-1}P_{k+1}-P_k\]</span>.</p>
 <p>We can plug in our solution for <span class="math inline">\(P_{n+1}-P_n\)</span> from (3) into the <span class="math inline">\(P_{k+1}-P_k\)</span> and get</p>
 <ol start="4" class="example" style="list-style-type: decimal">
 <li><span class="math display">\[=\sum\limits_{k=n}^{a+b-1}(\frac{q}{p})^k(P_1-1) \]</span></li>
@@ -78,10 +84,11 @@ description: A full walk through of a tricky but fun math problem
 <li><span class="math display">\[P_n=(1-P_1)\frac{\frac{q}{p}^n - \frac{q}{p}^{a+b}}{1-\frac{q}{p}}\]</span></li>
 </ol>
 <p>We’ve almost written this in terms of only n,a, and b, but we still don’t know what <span class="math inline">\((1-P_1)\)</span> is. We can take care of that by using the other initial condition again <span class="math inline">\(P_0=1\)</span>.</p>
-<span class="math display">\[\begin{equation} P_0=(1-P_1)\frac{\frac{q}{p}^0 - \frac{q}{p}^{a+b}}{1-\frac{q}{p}}=1 \end{equation}\]</span>
+<p><span class="math display">\[\begin{equation} P_0=(1-P_1)\frac{\frac{q}{p}^0 - \frac{q}{p}^{a+b}}{1-\frac{q}{p}}=1 \end{equation}\]</span></p>
 <p>We can now divide (8) by 1.</p>
 <p><span class="math display">\[P_n=\frac{(1-P_1)}{(1-P_1)}\frac{(\frac{q}{p}^n - \frac{q}{p}^{a+b})(1-\frac{q}{p})}{(\frac{q}{p}^0 - \frac{q}{p}^{a+b})(1-\frac{q}{p})}\]</span></p>
-<p>Which you can see a lot can be cancelled out from. Also, <span class="math inline">\(\frac{q}{p}^0=1\)</span>. That gives us <span class="math display">\[P_n=\frac{(\frac{q}{p})^n - (\frac{q}{p})^{a+b}}{1-(\frac{q}{p})^{a+b}}\]</span></p>
+<p>Which you can see a lot can be cancelled out from. Also, <span class="math inline">\(\frac{q}{p}^0=1\)</span>. That gives us
+<span class="math display">\[P_n=\frac{(\frac{q}{p})^n - (\frac{q}{p})^{a+b}}{1-(\frac{q}{p})^{a+b}}\]</span></p>
 <p>And if we substitute <span class="math inline">\(n=a\)</span>, we can then factor out a <span class="math inline">\(\frac{q}{p}^{a+b}\)</span> from the numerator and denominator and we’ll get the probability of ruin for player A when his wealth is a.</p>
 <p><span class="math display">\[P_a=\frac{1 - \frac{p}{q}^b}{1-\frac{p}{q}^{a+b}}\]</span></p>
 <p>Which is our answer! That’s quite a bit of math, but laid out step by step with explanations it’s very straightforward. Now that we’ve got our solution, let’s build some intuition around that last equation and simulate some gambling scenarios.</p>
@@ -112,14 +119,14 @@ description: A full walk through of a tricky but fun math problem
 }</code></pre>
 <p>Let’s try a few values. First let’s make the game only slightly in favor of player B but give him more and more wealth.</p>
 <pre class="r"><code>library(tidyverse)</code></pre>
-<pre><code>## ── Attaching packages ────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
-<pre><code>## ✔ ggplot2 2.2.1     ✔ purrr   0.2.4
-## ✔ tibble  1.4.2     ✔ dplyr   0.7.4
-## ✔ tidyr   0.8.0     ✔ stringr 1.3.0
-## ✔ readr   1.1.1     ✔ forcats 0.2.0</code></pre>
-<pre><code>## ── Conflicts ───────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
-## ✖ dplyr::filter() masks stats::filter()
-## ✖ dplyr::lag()    masks stats::lag()</code></pre>
+<pre><code>## ── Attaching packages ─────────────────────────────────────────────── tidyverse 1.3.0 ──</code></pre>
+<pre><code>## ✓ ggplot2 3.3.0           ✓ purrr   0.3.4      
+## ✓ tibble  3.0.1           ✓ dplyr   0.8.99.9003
+## ✓ tidyr   1.0.2           ✓ stringr 1.4.0      
+## ✓ readr   1.3.1           ✓ forcats 0.5.0</code></pre>
+<pre><code>## ── Conflicts ────────────────────────────────────────────────── tidyverse_conflicts() ──
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()</code></pre>
 <pre class="r"><code>b_wealth &lt;- c(50, 60, 100, 200, 500, 1000)
 b_wealth %&gt;% map_dbl(prob_ruin_a, a = 50, p = 0.499)</code></pre>
 <pre><code>## [1] 0.5498341 0.5994213 0.7306926 0.8711488 0.9724110 0.9966294</code></pre>

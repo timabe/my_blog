@@ -21,4 +21,6 @@ Currently, I do some advising and occasionally some freelance work.
 
 Here is where I try to do a little writing, a little data blogging, summarise what I've been reading, and write down my favorite recipes for posterity.
 
+I also just published a book, [**Metabase Up and Running**](https://www.amazon.com/Metabase-Running-Introduce-intelligence-analytics/dp/1800202318). If you are interested in analytics, or found me [via my YouTube Channel](https://youtube.com/c/TimAbraham), I highly recommend you check out the book!
+
 I was born in Oakland, CA and currently live right across the border in Berkeley.

@@ -43,10 +43,11 @@ github = "timabe"
 linkedin = "timabraham"
 twitter = "timabe"
 email = "timmy4@gmail.com"
+youtube = "TimAbraham"
 
 ## Extras
 [params.extra]
-copyright = "© 2018. Tim Abraham. [Some Rights Reserved](http://creativecommons.org/licenses/by/3.0/)." 
+copyright = "© 2020. Tim Abraham. [Some Rights Reserved](http://creativecommons.org/licenses/by/3.0/)." 
 poweredby = false
 highlightjs = true
 
@@ -54,21 +55,25 @@ highlightjs = true
 [[menu.main]]
     name = "about"
     identifier = "about"
-    weight = 100
+    weight = 1
     url = "/about/"
 [[menu.main]]
+    name = "cook"
+    identifier = "cook"
+    weight = 2
+    url = "/cook/"
+[[menu.main]]
+    name = "read"
+    identifier = "read"
+    weight = 3
+    url = "/read/"
+[[menu.main]]
+    name = "write"
+    identifier = "write"
+    weight = 4
+    url = "/write/"    
+[[menu.main]]
     name = "blog"
-    weight = 200
+    weight = 5
     identifier = "blog"
     url = "/blog/"
-[[menu.main]]
-    name = "books"
-    identifier = "books"
-    weight = 300
-    url = "/books/"
-[[menu.main]]
-    name = "recipes"
-    identifier = "recipes"
-    weight = 400
-    url = "/recipes/"
-    

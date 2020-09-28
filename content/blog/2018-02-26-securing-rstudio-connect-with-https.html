@@ -17,7 +17,7 @@ tags:
 <p>Later, a guy who does security work for our company told me that my service was sending passwords in plaintext. Yikes. I had made a note to secure the server with HTTPS, but had let it slip. My past experiences with HTTPS had always been confusing enough, it’s just a rabbit hole I don’t like going down.</p>
 <p>For those unfamiliar with HTTPS, there are two main ideas behind it. One is encryption. With regular HTTP traffic, your requests are sent across the internet in plaintext. This can be really bad. If you’re working at a cafe with public wifi, a hacker on the wifi network could pretty easily record all your web activity. Sending traffic through HTTPS solves that, using public key cryptography (a favorite topic of mine, but I won’t get into the details here). The second idea packaged into HTTPS are security certificates. If you’re on Google Chrome, you’ll notice my site (as well as most sites you visit these days) has this little green padlock next to the URL.</p>
 <div class="figure">
-<img src="img/secure.png" alt="I’m secure in myself" />
+<img src="img/secure.png" alt="" />
 <p class="caption">I’m secure in myself</p>
 </div>
 <p>That lock is there to tell you that some third party has verified that I am who I say I am, and that when you connect to my site, you’re actually sending data to me and no one else. This prevents something called a <a href="https://en.wikipedia.org/wiki/Man-in-the-middle_attack">man in the middle attack</a>. Rather that go deep into this complex topic, I’ll just post some links at the bottom for curious readers who want to know more about HTTPS.</p>

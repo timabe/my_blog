@@ -19,7 +19,11 @@ tags:
 <p><a href="www.unbounce.com">Unbounce</a> is an amazing service I only recently learned about. It allows marketers to easily and quickly design different landing pages, run AB tests on them, and find out which one converts best. Building this in house takes a lot of resources and know-how, and is pretty much in-feasible for a start-up, so having Unbounce do all this is a godsend.</p>
 <p>When a user enters their information on an Unbounce form, Unbounce will record them as a “lead”. You can log onto Unbounce and download a CSV of your leads. They also have an API.</p>
 <p>I was recently working with a team that was using Unbounce to collect leads. We needed to have the actual leads data, both for reporting and to compare with our internal data to properly measure conversion. Obviously, pulling the leads manually each day was out of the question - that’s not a process any data scientist could ever embrace. Using the API was a more attractive option. However, running the same script against the API each day wasn’t much better than downloading the CSV each day. Both required a human to touch a few buttons each day. This is exactly where you’d want ETL.</p>
-<p>So let’s begin our ETL, using rmarkdown. By the time we’re finished, we’ll have something that * Runs each night at exactly midnight * Downloads all our leads from Unbounce * Processes the leads from unstructured JSON to tidy rectangular data * Loads the tidy data into a database for safe keeping</p>
+<p>So let’s begin our ETL, using rmarkdown. By the time we’re finished, we’ll have something that
+* Runs each night at exactly midnight
+* Downloads all our leads from Unbounce
+* Processes the leads from unstructured JSON to tidy rectangular data
+* Loads the tidy data into a database for safe keeping</p>
 <div id="the-config-package-great-for-storing-secrets" class="section level3">
 <h3>The <code>config</code> package: Great for storing secrets</h3>
 <p>We’ll be using our API key to send requests to Unbounce, and database credentials to write data to our DB. We don’t want anyone to have access to these credentials. Exposing them in our rmarkdown document is a big no-no. So is keeping them in version control.</p>
@@ -39,7 +43,7 @@ tags:
 <p>Let’s set up our code to access the Unbounce API. According to their <a href="https://developer.unbounce.com/api_reference/#id_pages__page_id__leads">documentation</a> you need to add your page ID to the URL that you send your <code>GET</code> request to. In my case, I have several page IDs. My team may create new ones in the future as well, so rather than list them out I want some programmatic way of querying them. It turns out there’s <a href="https://developer.unbounce.com/api_reference/#id_domains__domain_id__pages">another API endpoint that will return your page IDs</a>, so let’s start with that.</p>
 <p>Of course, we could use the <code>curl</code> command for this. Rmarkdown allows us to write code chunks in bash. If we were do that, it would look something like this:</p>
 <p>There’s 3 disadvantages of going this route. One is that the output goes to <code>stout</code>. You could avoid that and put it in a file by passing something like <code>-o /tmp/pages.json</code> but then you’d have to read it back into R, which isn’t ideal and the second disadvantage. Third is that the <code>config</code> package doesn’t set bash environment variables. That means we can’t call <code>echo $ub_api_key</code> on the command line to see our API key. To get that to work we’d have to do a hacky workaround and put <code>Sys.setenv(API_KEY = config::get('ub_api_key'))</code>. This is a lot of extra work, and anyway it’s more fun to do it all in R, so we’ll turn to the <a href="https://github.com/r-lib/httr">httr</a> package.</p>
-<p>In the above code, we stored the request from our URL in a variable called <code>r</code>. Then we extracted the content from that request in “text” format, which returns it as a bunch of JSON. Finally, we used <code>fromJSON</code> from the <code>jsonlite</code> package to flatten the content into a named list of two data frames. The list named <code>&quot;pages&quot;</code> turned out to have the page IDs, and so we stored that in a data frame along with a few other fields.</p>
+<p>In the above code, we stored the request from our URL in a variable called <code>r</code>. Then we extracted the content from that request in “text” format, which returns it as a bunch of JSON. Finally, we used <code>fromJSON</code> from the <code>jsonlite</code> package to flatten the content into a named list of two data frames. The list named <code>"pages"</code> turned out to have the page IDs, and so we stored that in a data frame along with a few other fields.</p>
 <div id="leads-as-list-columns" class="section level4">
 <h4>Leads as List Columns</h4>
 <p>Now we have a data frame with all our page IDs. It turned out that this other field we got, <code>metadata.related.leads</code> has the page ID already formatted properly the way the lead API endpoint wants it. How convenient!</p>
@@ -64,7 +68,7 @@ tags:
 <p>We just wrote ETL to extract data from a couple API endpoints, transform it into tidy format, and load it into a PostgreSQL database. That’s awesome. But remember in the very beginning of this post I said that data scientists hate manual processes? I’m not going to be the one to wake up at 6 am and run this script each day to update my table with new leads. Even if it means just executing one command, that’s one command too many.</p>
 <p>This is where RStudio Connect’s scheduler comes in handy. If you deploy a rmarkdown document via Connect, you have an easy option to schedule it. I like to run mine at midnight each night.</p>
 <div class="figure">
-<img src="img/cron.png" alt="RStudio Connect’s Scheduler" />
+<img src="img/cron.png" alt="" />
 <p class="caption">RStudio Connect’s Scheduler</p>
 </div>
 <p>If you don’t have RStudio Connect, you could still schedule it using crontab, but you’d need to have it on some machine that is always running. That’s pretty easy to do - if you run into trouble just say so in the comments and I’ll pitch in.</p>
