@@ -7,6 +7,9 @@ tags: []
 ---
 
 <img align="right"; src="img/pickles.jpg" hspace="20">
+
+**Update:** I have somewhat moved on from this recipe for pickles in favor of one using sous vide where I only make 2-3 jars at a time. The new method only takes about 1 hour, rather than a whole day. However, if you are looking to make 12 jars I still recommend going this route.
+
 This is the recipe for my famous spicy dill pickles. These will honestly be the best pickles you've ever had. Making them will require a full afternoon, so you'll want to make a large quantity. This recipe is for around 12 quart jars. 
 
 ## Brine
@@ -26,8 +29,9 @@ This is the recipe for my famous spicy dill pickles. These will honestly be the 
 * Fresh Grape Leaves (optional, but if you have them the tannins add a nice crunch to the pickles)
 
 ## Equipment
+
 I made a [kit](www.kit.com) with all the equipment I use
-<iframe src="https://kit.com/embed?url=https%3A%2F%2Fkit.com%2Ftimabe%2Fpickling-pickles" style="display: block; border: 0px; margin: 0 auto; width: 100%; height: 100vw; max-width: 700px; max-height: 700px" scrolling="no"></iframe>
+<iframe src="https://kit.co/embed?url=https%3A%2F%2Fkit.com%2Ftimabe%2Fpickling-pickles" style="display: block; border: 0px; margin: 0 auto; width: 100%; height: 100vw; max-width: 700px; max-height: 700px" scrolling="no"></iframe>
 
 ## Instructions
 

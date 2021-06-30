@@ -47,7 +47,7 @@ youtube = "TimAbraham"
 
 ## Extras
 [params.extra]
-copyright = "© 2020. Tim Abraham. [Some Rights Reserved](http://creativecommons.org/licenses/by/3.0/)." 
+copyright = "© 2021. Tim Abraham. [Some Rights Reserved](http://creativecommons.org/licenses/by/3.0/)." 
 poweredby = false
 highlightjs = true
 
@@ -58,20 +58,15 @@ highlightjs = true
     weight = 1
     url = "/about/"
 [[menu.main]]
-    name = "cook"
+    name = "cooking"
     identifier = "cook"
     weight = 2
     url = "/cook/"
 [[menu.main]]
-    name = "read"
-    identifier = "read"
+    name = "books"
+    identifier = "books"
     weight = 3
-    url = "/read/"
-[[menu.main]]
-    name = "write"
-    identifier = "write"
-    weight = 4
-    url = "/write/"    
+    url = "/books/"
 [[menu.main]]
     name = "blog"
     weight = 5
