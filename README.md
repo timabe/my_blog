@@ -1,3 +1,4 @@
+[![Netlify Status](https://api.netlify.com/api/v1/badges/9a4b9461-1939-4f6e-b3c3-a36ad4ee49de/deploy-status)](https://app.netlify.com/sites/elated-sinoussi-1ce324/deploys)
 # Personal Blog
 
 ## About
