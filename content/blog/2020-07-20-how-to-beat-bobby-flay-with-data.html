@@ -1,0 +1,66 @@
+---
+title: How to Beat Bobby Flay (with data)
+author: Tim Abraham
+date: '2020-07-20'
+slug: how-to-beat-bobby-flay-with-data
+categories: []
+tags: []
+comments: no
+showcomments: yes
+showpagemeta: yes
+---
+
+
+
+<p>While sheltering in place, my girlfriend and I have gotten into the show <a href="https://en.wikipedia.org/wiki/Beat_Bobby_Flay">Beat Bobby Flay</a> on the Food Network (along with triple D - I never thought I’d become a Guy Fieri fan but I love the guy).</p>
+<p>Bobby Flay is the cocky celebrity chef with the strong NYC accent. You’ve probably seen him pop up on your TV screen at some point. The show works like this: Two chefs come on to challenge Bobby in a cook-off. However, first they have to challenge each other in an opening round, making an ingredient that Bobby picks the star of their dish. Two of Bobby’s friends, usually a Food Network personality and some fun celebrity guest, judges the dishes in the opening round and pick the best one to advance to round 2 where they take on Bobby Flay. This is where it gets interesting. The contestant chef gets to pick their signature dish and challenge Bobby in a cook-off. You would think that a professional chef’s signature dish, one that they cook day in and day out, would always beat Bobby’s attempt at it. However, Bobby is a force to be reckoned with and often wins.</p>
+<p>After watching a few dozen episodes, I started to get a feel for what’s in Bobby’s wheelhouse. The man stared in a show called Boy Meets Grill, and most of the episodes I’ve watched where the dish is something like steak or pork chop Bobby tends to absolutely crush. This got me thinking. According to Wikipedia, there have been about 300 episodes of Beat Bobby Flay. Might there be some patterns to his dominance? And, if so, might there also be some patterns that reveal kinks in the armour of this touch guy?</p>
+<div id="getting-the-data" class="section level2">
+<h2>Getting the data</h2>
+<p>The Wikipedia page for <a href="https://en.wikipedia.org/wiki/Beat_Bobby_Flay">Beat Bobby Flay</a> conveniently logs all episodes, dishes, and outcomes of the 300 odd shows. Scraping the data from that page turned out to be relatively straightforward. After some basic data maniuplation, I was able to create a data frame in R that looks like this:</p>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>## ── Attaching packages ───────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──</code></pre>
+<pre><code>## ✓ ggplot2 3.3.0           ✓ purrr   0.3.4      
+## ✓ tibble  3.0.1           ✓ dplyr   0.8.99.9003
+## ✓ tidyr   1.0.2           ✓ stringr 1.4.0      
+## ✓ readr   1.3.1           ✓ forcats 0.5.0</code></pre>
+<pre><code>## ── Conflicts ──────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()</code></pre>
+<pre class="r"><code>#head(bbf_df)</code></pre>
+<p>Each row is an episode, with a column for the air date, the dish featured in the final round, a label calling out whether Bobby won or lost. That’s a good start, but it doesn’t really give us much to work with. We want to find some patterns in this data, but the dishes that Bobby has been challenged to are relatively unique. The only dishes that Bobby has been challenged to multiple times are Burgers (twice) and Shrimp and Grits (twice). Every other dish was a one-off.</p>
+<p>At this point, I did something that I normally don’t do as a data scientist: I generated a bunch of features manually. That’s right. I first thought about a few categories of dishes that I could abstract out from these unique dishes. The ones I came up with were:</p>
+<ul>
+<li>American: Does the dish fit into the category of “American” food. I know that American food isn’t a very well defined category, but I defined this as dishes that either originated in America or were derived from European dishes (mostly French, British, Italian).</li>
+<li>European: Does the dish originate from Europe. There’s quite a bit of overlap between European and American food, but I wanted to make a distinction between the two.</li>
+<li>Seafood: Does the dish feature fish or shellfish. Pretty straightforward.</li>
+<li>Poultry: Straightforward.</li>
+<li>Vegetarian: Straightforward.</li>
+<li>Dessert: Straightforward.</li>
+</ul>
+<p>Some examples of dishes that are American <em>and</em> European are Bouillabaise, ravioli, Filet Mignon, and chicken parm. Dishes that I consider only American are things like ribs, meatball sandwich, and a Bacon Cheeseburger. Dishes that are neither would be things like chicken flautas, Peri Peri Chicken, and Ramen.</p>
+<p>Yes, I literally went through every dish cooked on Beat Bobby Flay and entered <code>Yes/No</code> for each of these categories. I guess I could have gone to Mechanical Turk, but it only took me 20 minutes or so. By the end of this exercise, by data looked like this:</p>
+<pre class="r"><code>set.seed(444)
+#features %&gt;% 
+#  sample_n(4)</code></pre>
+<p>Armed with this layer of zoomed out abstraction on my data, I went to work.</p>
+</div>
+<div id="basic-analysis" class="section level2">
+<h2>Basic Analysis</h2>
+<p>Before we look at any results from a model, let’s get a sense for what kind of dishes show up in the final round.</p>
+<pre class="r"><code># features %&gt;% 
+#   select(american:dessert) %&gt;% 
+#   mutate(id = 1:n()) %&gt;% 
+#   pivot_longer(cols = -id) %&gt;% 
+#   filter(value == 1) %&gt;% 
+#   count(name, sort = T)
+# 
+# 
+# dishes &lt;- features %&gt;% 
+#   select(american:dessert) %&gt;% 
+#   mutate(id = 1:n()) %&gt;% 
+#   pivot_longer(cols = -id) %&gt;% 
+#   filter(value == 1) %&gt;% 
+#   chop(name) %&gt;% 
+#   count(name, sort = T)</code></pre>
+</div>
