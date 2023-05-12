@@ -47,7 +47,7 @@ youtube = "TimAbraham"
 
 ## Extras
 [params.extra]
-copyright = "© 2021. Tim Abraham. [Some Rights Reserved](http://creativecommons.org/licenses/by/3.0/)." 
+copyright = "© 2023. Tim Abraham. [Some Rights Reserved](http://creativecommons.org/licenses/by/3.0/)." 
 poweredby = false
 highlightjs = true
 
