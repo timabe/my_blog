@@ -1,6 +1,6 @@
 ## Basic Configuration
 
-baseurl = "https://timabe.me/" 
+baseurl = "https://timabe.info/" 
 builddrafts = false
 canonifyurls = false
 languageCode = "en-US"
