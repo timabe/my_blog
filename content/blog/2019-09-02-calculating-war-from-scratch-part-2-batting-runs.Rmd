@@ -12,7 +12,7 @@ showcomments: yes
 showpagemeta: yes
 ---
 
-In our [journey of calculating WAR](https://www.timabe.me/blog/caculating-war), we will start with Batting Runs. According to FanGraphs:
+In our [journey of calculating WAR](https://www.timabe.info/blog/caculating-war), we will start with Batting Runs. According to FanGraphs:
 
 > To calculate Batting Runs, you want [Weighted Runs Above Average (wRAA)](https://library.fangraphs.com/offense/wraa/)
 

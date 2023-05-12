@@ -12,7 +12,7 @@ showpagemeta: yes
 
 ![](img/new_pickles.JPG)
 
-For many years, [this old recipe was my tried and true pickle recipe](https://www.timabe.me/cook/spicy-dill-pickles). But at some point I realized that setting aside an entire afternoon to make 12 quarts of pickles was a little overkill. This recipe is far easier, and produces results that are just as good. What's even better is that it's scalable, so you can do 12 jars if you want . . . or maybe you can just make 1 jar. I usually make 2 or 3 at a time, which will last me a couple months. 
+For many years, [this old recipe was my tried and true pickle recipe](https://www.timabe.info/cook/spicy-dill-pickles). But at some point I realized that setting aside an entire afternoon to make 12 quarts of pickles was a little overkill. This recipe is far easier, and produces results that are just as good. What's even better is that it's scalable, so you can do 12 jars if you want . . . or maybe you can just make 1 jar. I usually make 2 or 3 at a time, which will last me a couple months. 
 
 ## What makes this recipe great
 
